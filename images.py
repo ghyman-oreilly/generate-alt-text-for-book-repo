@@ -12,5 +12,6 @@ class Image(TypedDict, total=False):
 	original_alt_text: str
 	generated_alt_text: str
 	base64_str: str
+	img_data_uri: str
 
 Images = List[Image]

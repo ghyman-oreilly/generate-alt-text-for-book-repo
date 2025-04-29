@@ -1,10 +1,15 @@
 import argparse
+import logging
 from pathlib import Path
-import os
 import sys
 
 from images import Images
-from process_repo_files import read_atlas_json, check_asciidoctor_installed, collect_image_data_from_chapter_file
+from generate_alt_text import AllTextGenerator
+from process_repo_files import (
+    read_atlas_json, 
+    check_asciidoctor_installed, 
+    collect_image_data_from_chapter_file
+    )
 
 
 def main():
@@ -37,6 +42,13 @@ def main():
         if all(skip_str not in file.name for skip_str in files_to_skip):
             chapter_images: Images = collect_image_data_from_chapter_file(file, project_dir)
             all_images.extend(chapter_images)
+
+    alt_text_generator = AllTextGenerator()
+
+    for i, image in enumerate(all_images):   
+        print(f"Generating alt text for image {i+1} of {len(all_images)}...")
+        new_alt_text = alt_text_generator.generate_alt_text(image)
+        image["generated_alt_text"] = new_alt_text
 
     print("test")
 

@@ -2,6 +2,7 @@ import base64
 from bs4 import BeautifulSoup
 import json
 import logging
+import mimetypes
 from pathlib import Path
 import os
 import subprocess
@@ -128,6 +129,8 @@ def collect_image_data_from_chapter_file(filepath: Path, project_dir: Path) -> I
     Given a filepath of an HTML or Asciidoc file, 
     collect data on image references, using Image structure.
     """
+    supported_filetypes = ['png', 'jpeg', 'jpg', 'webp', 'gif'] # types supported by OpenAI
+    
     images: Images = []
     
     if os.path.splitext(filepath)[1].lower() == ".html":
@@ -155,7 +158,12 @@ def collect_image_data_from_chapter_file(filepath: Path, project_dir: Path) -> I
         
         if not img_filepath.exists:
             logger.warning(f"File doesn't exist. Skipping image: {img_src}")
+            continue
         
+        if not img_filepath.suffix[1:].lower() in supported_filetypes:
+            logger.warning(f"Image filetype not supported. Skipping image: {img_src}")
+            continue
+
         img_alt_text = img_elem.get('alt', '')
 
         if img_elem.parent.name == 'figure':
@@ -173,6 +181,7 @@ def collect_image_data_from_chapter_file(filepath: Path, project_dir: Path) -> I
         caption_text = caption_tag.get_text() if caption_tag else ''
 
         base64_str = encode_image_to_base64(img_filepath)
+        img_data_uri = f"data:{get_mimetype(img_filepath)};base64,{base64_str}"
 
         images.append(
             Image(
@@ -183,7 +192,8 @@ def collect_image_data_from_chapter_file(filepath: Path, project_dir: Path) -> I
                 succeeding_para_text=succeeding_para_text,
                 caption_text=caption_text,
                 original_alt_text=img_alt_text,
-                base64_str=base64_str
+                base64_str=base64_str,
+                img_data_uri=img_data_uri
             )
         )
 
@@ -220,4 +230,14 @@ def encode_image_to_base64(filepath: Path) -> str:
     with open(filepath, "rb") as image_file:
         encoded_bytes = base64.b64encode(image_file.read())
         return encoded_bytes.decode("utf-8")
-    
+
+
+def get_mimetype(filepath: Path) -> str:
+    """
+    Return mimetype string for given filepath (Posix Path).
+    """
+    mime_type, _ = mimetypes.guess_type(filepath)
+    if mime_type is None:
+        raise ValueError(f"Could not determine MIME type for file: {filepath}")
+   
+    return mime_type
