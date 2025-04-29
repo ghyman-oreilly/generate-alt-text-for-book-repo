@@ -1,9 +1,9 @@
 import argparse
-import logging
+from collections import defaultdict
 from pathlib import Path
 import sys
 
-from images import Images
+from images import Images, Chapter, Chapters, ChapterFormat
 from generate_alt_text import AllTextGenerator
 from process_repo_files import (
     read_atlas_json, 
@@ -75,9 +75,42 @@ def main():
         new_alt_text = alt_text_generator.generate_alt_text(image)
         image["generated_alt_text"] = new_alt_text
 
+    grouped_images: dict[Path, Images] = defaultdict(list)
+
+    # group images by chapter
+    for img in all_images:
+        fp = img.get("chapter_filepath")
+        if fp:
+            grouped_images[fp].append(img)
+
+    def detect_format(path: Path) -> ChapterFormat:
+        if path.suffix.lower() in (".html", ".htm"):
+            return "html"
+        else:
+            return "asciidoc"
+
+    chapters: Chapters = [
+        {
+            "chapter_filepath": path,
+            "images": images,
+            "chapter_format": detect_format(path)
+        }
+        for path, images in grouped_images.items()
+    ]
+
+    for chapter in chapters:
+        chapter_filepath = chapter.get("chapter_filepath", None)
+        if chapter_filepath is not None:
+            with open(chapter_filepath, 'r') as f:
+                chapter_content = f.read()
+            for image in chapter:
+                # TODO: make replacements - probably this should all go in process_repo_files
+                pass
+        
+
     print("test")
 
-    # TODO: make replacements
+    
 
 if __name__ == '__main__':
     main()

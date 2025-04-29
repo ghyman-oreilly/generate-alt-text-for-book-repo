@@ -126,7 +126,7 @@ def convert_asciidoc_to_htmlbook(file_path: str) -> str:
 
 
 def collect_image_data_from_chapter_file(
-        filepath: Path, 
+        chapter_filepath: Path, 
         project_dir: Path, 
         skip_existing_alt_text: bool = False,
         img_filename_filter_list: Optional[list] = None
@@ -139,15 +139,15 @@ def collect_image_data_from_chapter_file(
     
     images: Images = []
     
-    if os.path.splitext(filepath)[1].lower() == ".html":
-        with open(filepath, 'r', encoding='utf-8') as f:
+    if os.path.splitext(chapter_filepath)[1].lower() == ".html":
+        with open(chapter_filepath, 'r', encoding='utf-8') as f:
             soup = BeautifulSoup(f, 'html.parser')
-    elif os.path.splitext(filepath)[1].lower() in [".asciidoc", ".adoc"]:
-        html = convert_asciidoc_to_htmlbook(filepath)
+    elif os.path.splitext(chapter_filepath)[1].lower() in [".asciidoc", ".adoc"]:
+        html = convert_asciidoc_to_htmlbook(chapter_filepath)
         soup = BeautifulSoup(html, 'html.parser')
     else:
         # filetype not supported
-        logger.warning(f"File format {os.path.splitext(filepath)[1].lower()} not supported. Skipping...")
+        logger.warning(f"File format {os.path.splitext(chapter_filepath)[1].lower()} not supported. Skipping...")
 
     img_elems = soup.find_all('img')
 
@@ -202,7 +202,7 @@ def collect_image_data_from_chapter_file(
 
         images.append(
             Image(
-                filepath=filepath,
+                chapter_filepath=chapter_filepath,
                 image_src=img_src,
                 image_filepath=img_filepath,
                 preceding_para_text=preceding_para_text,
@@ -258,3 +258,9 @@ def get_mimetype(filepath: Path) -> str:
         raise ValueError(f"Could not determine MIME type for file: {filepath}")
    
     return mime_type
+
+
+def replace_alt_text_in_chapter_content(chapter_content: str, images: Images):
+    
+    # return updated_content
+    pass
