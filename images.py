@@ -1,9 +1,11 @@
+from pathlib import Path
 from typing import TypedDict, List
 
 
 class Image(TypedDict, total=False):
-	filepath: str
-	image_path: str
+	filepath: Path
+	image_src: str
+	image_filepath: Path
 	preceding_para_text: str
 	succeeding_para_text: str
 	caption_text: str

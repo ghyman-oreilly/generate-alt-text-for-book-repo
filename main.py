@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 import os
 import sys
 
@@ -17,10 +18,13 @@ def main():
         print("Exiting!")
         sys.exit(0)
 
-    project_dir = os.path.dirname(args.atlas_path)
-    chapter_files = read_atlas_json(args.atlas_path)
+    atlas_filepath = Path(args.atlas_path)
 
-    if len([f for f in chapter_files if ".asciidoc" in f.lower() or ".adoc" in f.lower()]) > 0:
+    project_dir = atlas_filepath.parent
+    
+    chapter_files = read_atlas_json(atlas_filepath)
+
+    if any(f.name.lower().endswith(('.asciidoc', '.adoc')) for f in chapter_files):
         print("Project contains asciidoc files. Please be patient as asciidoc files are converted to html in memory.")
         print("This will not convert your actual asciidoc files to html.")
         check_asciidoctor_installed()
@@ -30,15 +34,12 @@ def main():
     all_images: Images = []
 
     for file in chapter_files:
-        if all(skip_str not in file for skip_str in files_to_skip):
-            chapter_images: Images = collect_image_data_from_chapter_file(file)
+        if all(skip_str not in file.name for skip_str in files_to_skip):
+            chapter_images: Images = collect_image_data_from_chapter_file(file, project_dir)
             all_images.extend(chapter_images)
 
     print("test")
 
-    # TODO: find each image pattern in each chapter file
-    # TODO: build dict: file, complete line/elem text, image path, existing alt text
-    # TODO: process dict: validate image at path, convert to base64, add to dict
     # TODO: generate new alt text from base64
     # TODO: make replacements
 

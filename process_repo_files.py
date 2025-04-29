@@ -1,9 +1,11 @@
+import base64
 from bs4 import BeautifulSoup
 import json
 import logging
+from pathlib import Path
 import os
 import subprocess
-import sys
+from urllib.parse import urlparse
 
 from images import Image, Images
 
@@ -21,22 +23,31 @@ class AsciidoctorConversionError(RuntimeError):
     pass
 
 
-def read_atlas_json(atlas_path):
+def read_atlas_json(atlas_path: Path) -> list[Path] | None:
     """
-    Get list of chapter files
-    from atlas.json
+    Get list of chapter files from atlas.json.
+
+    Args:
+        atlas_path (Path): Path to the atlas.json file.
+
+    Returns:
+        List of absolute chapter file Paths, or None if no files found.
     """
-    # Load the atlas.json file
-    with open(atlas_path, 'r', encoding='utf-8') as f:
-        atlas_data = json.load(f)
-    
-    project_dir = os.path.dirname(os.path.abspath(atlas_path))
-    chapter_files = [os.path.join(project_dir, path) for path in atlas_data.get("files", [])]
-    
+    atlas_path = Path(atlas_path)  # Ensure atlas_path is a Path object
+    project_dir = atlas_path.parent
+
+    try:
+        atlas_data = json.loads(atlas_path.read_text(encoding='utf-8'))
+    except Exception as e:
+        logger.error(f"Failed to read or parse atlas.json: {e}")
+        return None
+
+    chapter_files = [project_dir / Path(p) for p in atlas_data.get("files", [])]
+
     if not chapter_files:
         logger.warning("No chapter files found in the atlas.json file.")
         return None
-    
+
     return chapter_files
 
 
@@ -112,7 +123,7 @@ def convert_asciidoc_to_htmlbook(file_path: str) -> str:
         raise AsciidoctorConversionError("Asciidoctor CLI not found.")
 
 
-def collect_image_data_from_chapter_file(filepath: str) -> Images:
+def collect_image_data_from_chapter_file(filepath: Path, project_dir: Path) -> Images:
     """
     Given a filepath of an HTML or Asciidoc file, 
     collect data on image references, using Image structure.
@@ -132,7 +143,19 @@ def collect_image_data_from_chapter_file(filepath: str) -> Images:
     img_elems = soup.find_all('img')
 
     for img_elem in img_elems:
-        img_path = img_elem.get('src', None)
+        img_src = img_elem.get('src', None)
+
+        if img_src is None:
+            continue
+        elif 'callouts/' in img_src:
+            logger.warning(f"Skipping callout image: {img_src}")
+            continue
+
+        img_filepath = resolve_image_path(project_dir, img_src)
+        
+        if not img_filepath.exists:
+            logger.warning(f"File doesn't exist. Skipping image: {img_src}")
+        
         img_alt_text = img_elem.get('alt', '')
 
         if img_elem.parent.name == 'figure':
@@ -149,18 +172,52 @@ def collect_image_data_from_chapter_file(filepath: str) -> Images:
         succeeding_para_text = succeeding_para.get_text() if succeeding_para else ''
         caption_text = caption_tag.get_text() if caption_tag else ''
 
-        if img_path is not None:
-            images.append(
-                Image(
-                    filepath=filepath,
-                    image_path=img_path,
-                    preceding_para_text=preceding_para_text,
-                    succeeding_para_text=succeeding_para_text,
-                    caption_text=caption_text,
-                    original_alt_text=img_alt_text
-                )
+        base64_str = encode_image_to_base64(img_filepath)
+
+        images.append(
+            Image(
+                filepath=filepath,
+                image_src=img_src,
+                image_filepath=img_filepath,
+                preceding_para_text=preceding_para_text,
+                succeeding_para_text=succeeding_para_text,
+                caption_text=caption_text,
+                original_alt_text=img_alt_text,
+                base64_str=base64_str
             )
+        )
 
     return images
 
 
+def is_local_relative_path(src: str) -> bool:
+    parsed = urlparse(src)
+    return (
+        not parsed.scheme  # excludes http, https, data, file, etc.
+        and not parsed.netloc  # excludes example.com
+        and not src.startswith('/')  # excludes root-relative web paths
+    )
+
+
+def resolve_image_path(project_dir: Path, src: str) -> Path | None:
+    if is_local_relative_path(src):
+        candidate_path = project_dir / src
+        if candidate_path.exists():
+            return candidate_path.resolve()
+    return None
+
+
+def encode_image_to_base64(filepath: Path) -> str:
+    """
+    Read an image file and return a base64-encoded string.
+    
+    Args:
+        filepath (Path): Path to the image file
+    
+    Returns:
+        str: Base64 string (without data URI prefix)
+    """
+    with open(filepath, "rb") as image_file:
+        encoded_bytes = base64.b64encode(image_file.read())
+        return encoded_bytes.decode("utf-8")
+    
