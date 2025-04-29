@@ -30,6 +30,25 @@ def main():
     
     chapter_files = read_atlas_json(atlas_filepath)
 
+    img_filename_filter_list = None
+
+    if args.image_file_filter:
+        image_file_filter_filepath = Path(args.image_file_filter)
+        if (
+            not image_file_filter_filepath.exists() or 
+            not image_file_filter_filepath.is_file() or
+            image_file_filter_filepath.suffix[1:].lower() != 'txt'
+            ):
+            raise ValueError("Image file filter filepath must point to a valid text (.txt) file.")
+        with open(image_file_filter_filepath, 'r') as f:
+            img_filename_filter_list = [
+                line.strip() for line in f
+                if line.strip() and not line.strip().startswith("#")
+            ]    
+        if not input(f"Permitted image filenames based on your filter file include the following:\n{'\n'.join(img_filename_filter_list)}\nDo you wish to continue (y/n)? ").strip().lower() in ['y', 'yes']:
+            print("Exiting!")
+            sys.exit(0)
+
     if any(f.name.lower().endswith(('.asciidoc', '.adoc')) for f in chapter_files):
         print("Project contains asciidoc files. Please be patient as asciidoc files are converted to html in memory.")
         print("This will not convert your actual asciidoc files to html.")
@@ -41,7 +60,12 @@ def main():
 
     for file in chapter_files:
         if all(skip_str not in file.name for skip_str in files_to_skip):
-            chapter_images: Images = collect_image_data_from_chapter_file(file, project_dir, args.do_not_replace_existing_alt_text)
+            chapter_images: Images = collect_image_data_from_chapter_file(
+                file, 
+                project_dir, 
+                args.do_not_replace_existing_alt_text, 
+                img_filename_filter_list=(img_filename_filter_list if img_filename_filter_list else None)
+                )
             all_images.extend(chapter_images)
 
     alt_text_generator = AllTextGenerator()

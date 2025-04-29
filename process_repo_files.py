@@ -6,6 +6,7 @@ import mimetypes
 from pathlib import Path
 import os
 import subprocess
+from typing import Optional
 from urllib.parse import urlparse
 
 from images import Image, Images
@@ -127,7 +128,8 @@ def convert_asciidoc_to_htmlbook(file_path: str) -> str:
 def collect_image_data_from_chapter_file(
         filepath: Path, 
         project_dir: Path, 
-        skip_existing_alt_text: bool = False
+        skip_existing_alt_text: bool = False,
+        img_filename_filter_list: Optional[list] = None
     ) -> Images:
     """
     Given a filepath of an HTML or Asciidoc file, 
@@ -164,6 +166,13 @@ def collect_image_data_from_chapter_file(
             logger.warning(f"File doesn't exist. Skipping image: {img_src}")
             continue
         
+        if (
+            img_filename_filter_list is not None and
+            img_filepath.name not in img_filename_filter_list
+            ):
+            logger.info(f"Image not included in filter list. Skipping image: {img_src}")
+            continue
+
         if not img_filepath.suffix[1:].lower() in supported_filetypes:
             logger.warning(f"Image filetype not supported. Skipping image: {img_src}")
             continue
