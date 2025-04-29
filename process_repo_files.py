@@ -124,7 +124,11 @@ def convert_asciidoc_to_htmlbook(file_path: str) -> str:
         raise AsciidoctorConversionError("Asciidoctor CLI not found.")
 
 
-def collect_image_data_from_chapter_file(filepath: Path, project_dir: Path) -> Images:
+def collect_image_data_from_chapter_file(
+        filepath: Path, 
+        project_dir: Path, 
+        skip_existing_alt_text: bool = False
+    ) -> Images:
     """
     Given a filepath of an HTML or Asciidoc file, 
     collect data on image references, using Image structure.
@@ -151,7 +155,7 @@ def collect_image_data_from_chapter_file(filepath: Path, project_dir: Path) -> I
         if img_src is None:
             continue
         elif 'callouts/' in img_src:
-            logger.warning(f"Skipping callout image: {img_src}")
+            logger.info(f"Skipping callout image: {img_src}")
             continue
 
         img_filepath = resolve_image_path(project_dir, img_src)
@@ -165,6 +169,10 @@ def collect_image_data_from_chapter_file(filepath: Path, project_dir: Path) -> I
             continue
 
         img_alt_text = img_elem.get('alt', '')
+
+        if skip_existing_alt_text and img_alt_text.strip() != '':
+            logger.info(f"Image has existing alt text. Skipping image: {img_src}")
+            continue
 
         if img_elem.parent.name == 'figure':
             preceding_para = img_elem.parent.find_previous('p')

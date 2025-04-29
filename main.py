@@ -16,6 +16,7 @@ def main():
     parser = argparse.ArgumentParser(description="Script for generating alt text for images in an ORM book repo.")
     parser.add_argument("atlas_path", help="Path to the atlas.json file")
     parser.add_argument("--do-not-replace-existing-alt-text", action="store_true", help="Skip generation of alt text for any images that already have it. By default, all alt text is replaced.")
+    parser.add_argument("--image-file-filter", default=None, help="Provide the path to an optional newline-delimited text file of image filenames. If path is provided, only images matching the filenames in the text file will be processed.")
 
     args = parser.parse_args()
 
@@ -40,7 +41,7 @@ def main():
 
     for file in chapter_files:
         if all(skip_str not in file.name for skip_str in files_to_skip):
-            chapter_images: Images = collect_image_data_from_chapter_file(file, project_dir)
+            chapter_images: Images = collect_image_data_from_chapter_file(file, project_dir, args.do_not_replace_existing_alt_text)
             all_images.extend(chapter_images)
 
     alt_text_generator = AllTextGenerator()
@@ -52,7 +53,6 @@ def main():
 
     print("test")
 
-    # TODO: generate new alt text from base64
     # TODO: make replacements
 
 if __name__ == '__main__':
