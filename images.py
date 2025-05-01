@@ -6,6 +6,7 @@ ChapterFormat = Literal["html", "asciidoc"]
 
 class Image(TypedDict, total=False):
     chapter_filepath: Path
+    original_img_elem_str: str
     image_src: str
     image_filepath: Path
     preceding_para_text: str

@@ -8,7 +8,9 @@ from generate_alt_text import AllTextGenerator
 from process_repo_files import (
     read_atlas_json, 
     check_asciidoctor_installed, 
-    collect_image_data_from_chapter_file
+    collect_image_data_from_chapter_file,
+    detect_format,
+    replace_alt_text_in_chapter_content
     )
 
 
@@ -60,11 +62,13 @@ def main():
 
     for file in chapter_files:
         if all(skip_str not in file.name for skip_str in files_to_skip):
+            chapter_format = detect_format(file)
             chapter_images: Images = collect_image_data_from_chapter_file(
                 file, 
                 project_dir, 
                 args.do_not_replace_existing_alt_text, 
-                img_filename_filter_list=(img_filename_filter_list if img_filename_filter_list else None)
+                img_filename_filter_list=(img_filename_filter_list if img_filename_filter_list else None),
+                chapter_format=chapter_format
                 )
             all_images.extend(chapter_images)
 
@@ -83,31 +87,15 @@ def main():
         if fp:
             grouped_images[fp].append(img)
 
-    def detect_format(path: Path) -> ChapterFormat:
-        if path.suffix.lower() in (".html", ".htm"):
-            return "html"
-        else:
-            return "asciidoc"
-
-    chapters: Chapters = [
-        {
-            "chapter_filepath": path,
-            "images": images,
-            "chapter_format": detect_format(path)
-        }
-        for path, images in grouped_images.items()
-    ]
-
-    for chapter in chapters:
-        chapter_filepath = chapter.get("chapter_filepath", None)
+    for chapter_filepath, images in grouped_images.items():
         if chapter_filepath is not None:
             with open(chapter_filepath, 'r') as f:
                 chapter_content = f.read()
-            for image in chapter:
-                # TODO: make replacements - probably this should all go in process_repo_files
-                pass
+            chapter_format = detect_format(chapter_filepath)
+            updated_chapter_content = replace_alt_text_in_chapter_content(chapter_content, images, chapter_format)
+            with open(chapter_filepath, 'w') as f:
+                f.write(updated_chapter_content)
         
-
     print("test")
 
     

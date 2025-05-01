@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+import html
 import openai
 import os
 
@@ -60,4 +61,4 @@ class AllTextGenerator:
             input=prompt
         )
         
-        return response.output_text
+        return html.escape(response.output_text, quote=True)

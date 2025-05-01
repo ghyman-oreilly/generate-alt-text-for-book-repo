@@ -1,15 +1,16 @@
 import base64
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString, Tag
 import json
 import logging
 import mimetypes
 from pathlib import Path
 import os
+import re
 import subprocess
 from typing import Optional
 from urllib.parse import urlparse
 
-from images import Image, Images
+from images import Image, Images, ChapterFormat
 
 
 logger = logging.getLogger(__name__)
@@ -80,7 +81,7 @@ def check_asciidoctor_installed(raise_on_error=True) -> bool:
         return False
 
 
-def convert_asciidoc_to_htmlbook(file_path: str) -> str:
+def convert_asciidoc_to_html(file_path: Path) -> str:
     """
     Convert an AsciiDoc file to HTML using the Asciidoctor CLI.
 
@@ -88,7 +89,7 @@ def convert_asciidoc_to_htmlbook(file_path: str) -> str:
     Output is captured and returned as a string.
 
     Args:
-        file_path (str): Path to the AsciiDoc file to convert.
+        file_path (Path): Path to the AsciiDoc file to convert.
 
     Returns:
         str: HTML content generated from the AsciiDoc input.
@@ -129,32 +130,49 @@ def collect_image_data_from_chapter_file(
         chapter_filepath: Path, 
         project_dir: Path, 
         skip_existing_alt_text: bool = False,
-        img_filename_filter_list: Optional[list] = None
+        img_filename_filter_list: Optional[list] = None,
+        chapter_format: ChapterFormat = 'html'
     ) -> Images:
     """
     Given a filepath of an HTML or Asciidoc file, 
     collect data on image references, using Image structure.
     """
+    with open(chapter_filepath, 'r', encoding='utf-8') as f:
+        text_content = f.read()
+    
+    if chapter_format.lower() == 'html':
+        img_pattern = r'<img\b[^>]*?>'
+        soup = BeautifulSoup(text_content, 'html.parser')
+    elif chapter_format.lower() == 'asciidoc':
+        img_pattern = r'^image:{1,2}.*?\[.*?\]'
+        html_text = convert_asciidoc_to_html(chapter_filepath)
+        soup = BeautifulSoup(html_text, 'html.parser')
+    else:
+        raise ValueError(f"Unsupported file format: {chapter_format}.")
+
     supported_filetypes = ['png', 'jpeg', 'jpg', 'webp', 'gif'] # types supported by OpenAI
     
     images: Images = []
     
-    if os.path.splitext(chapter_filepath)[1].lower() == ".html":
-        with open(chapter_filepath, 'r', encoding='utf-8') as f:
-            soup = BeautifulSoup(f, 'html.parser')
-    elif os.path.splitext(chapter_filepath)[1].lower() in [".asciidoc", ".adoc"]:
-        html = convert_asciidoc_to_htmlbook(chapter_filepath)
-        soup = BeautifulSoup(html, 'html.parser')
-    else:
-        # filetype not supported
-        logger.warning(f"File format {os.path.splitext(chapter_filepath)[1].lower()} not supported. Skipping...")
+    img_elements = soup.find_all('img')
 
-    img_elems = soup.find_all('img')
+    img_tag_strings = re.findall(img_pattern, text_content, flags=re.I | re.DOTALL | re.MULTILINE)
 
-    for img_elem in img_elems:
-        img_src = img_elem.get('src', None)
+    original_img_tags_by_src = {}
 
-        if img_src is None:
+    for tag_html in img_tag_strings:
+        temp_soup = BeautifulSoup(tag_html, 'html.parser')
+        tag = temp_soup.find('img')
+        if tag and tag.has_attr('src'):
+            src = tag['src']
+            original_img_tags_by_src.setdefault(src, []).append(tag_html)  # Handle duplicates
+
+    images = []
+
+    for img_elem in img_elements:
+        img_src = img_elem.get('src')
+        
+        if not img_src:
             continue
         elif 'callouts/' in img_src:
             logger.info(f"Skipping callout image: {img_src}")
@@ -165,7 +183,7 @@ def collect_image_data_from_chapter_file(
         if not img_filepath.exists:
             logger.warning(f"File doesn't exist. Skipping image: {img_src}")
             continue
-        
+
         if (
             img_filename_filter_list is not None and
             img_filepath.name not in img_filename_filter_list
@@ -183,38 +201,71 @@ def collect_image_data_from_chapter_file(
             logger.info(f"Image has existing alt text. Skipping image: {img_src}")
             continue
 
+        # Get the first raw string that matched this src
+        original_img_tag = (original_img_tags_by_src.get(img_src) or [None])[0]
+
+        if skip_existing_alt_text and img_elem.get('alt', '').strip():
+            continue
+
+        # Look for paragraph and caption context
         if img_elem.parent.name == 'figure':
             preceding_para = img_elem.parent.find_previous('p')
             succeeding_para = img_elem.parent.find_next('p')
-            caption_tag = img_elem.parent.find('figcaption') or img_elem.parent.find('caption')
-            
+            caption_tag = (
+                img_elem.parent.find('figcaption')
+                or img_elem.parent.find('caption')
+            )
         else:
             preceding_para = img_elem.find_previous('p')
             succeeding_para = img_elem.find_next('p')
-            caption_tag = None
+            
+        # AsciiDoc case: <div class="content"><img ...></div> <div class="title">...</div>
+        if img_elem.parent.name == 'div' and 'content' in img_elem.parent.get('class', []):
+            next_elem = get_next_non_whitespace_sibling(img_elem.parent)
+            if next_elem and next_elem.name == 'div' and 'title' in next_elem.get('class', []):
+                caption_tag = next_elem
+            else:
+                caption_tag = None
 
-        preceding_para_text = preceding_para.get_text() if preceding_para else ''
-        succeeding_para_text = succeeding_para.get_text() if succeeding_para else ''
-        caption_text = caption_tag.get_text() if caption_tag else ''
+        # Convert elements to text
+        preceding_text = (preceding_para.get_text() if preceding_para else '').strip()
+        succeeding_text = (succeeding_para.get_text() if succeeding_para else '').strip()
+        caption_text = (caption_tag.get_text() if caption_tag else '').strip()
+
+        img_filepath = resolve_image_path(project_dir, img_src)
+        if not img_filepath.exists():
+            continue
 
         base64_str = encode_image_to_base64(img_filepath)
-        img_data_uri = f"data:{get_mimetype(img_filepath)};base64,{base64_str}"
+        data_uri = f"data:{get_mimetype(img_filepath)};base64,{base64_str}"
 
-        images.append(
-            Image(
-                chapter_filepath=chapter_filepath,
-                image_src=img_src,
-                image_filepath=img_filepath,
-                preceding_para_text=preceding_para_text,
-                succeeding_para_text=succeeding_para_text,
-                caption_text=caption_text,
-                original_alt_text=img_alt_text,
-                base64_str=base64_str,
-                img_data_uri=img_data_uri
-            )
-        )
+        images.append(Image(
+            chapter_filepath=chapter_filepath,
+            image_src=img_src,
+            image_filepath=img_filepath,
+            preceding_para_text=preceding_text,
+            succeeding_para_text=succeeding_text,
+            caption_text=caption_text,
+            original_alt_text=img_alt_text,
+            base64_str=base64_str,
+            img_data_uri=data_uri,
+            original_img_elem_str=original_img_tag,
+        ))
 
     return images
+
+
+def get_next_non_whitespace_sibling(tag):
+    next_sibling = tag.next_sibling
+    while next_sibling:
+        if isinstance(next_sibling, NavigableString):
+            if next_sibling.strip():  # if not just whitespace
+                # It's non-whitespace text, not an element — stop
+                break
+        elif isinstance(next_sibling, Tag):
+            return next_sibling
+        next_sibling = next_sibling.next_sibling
+    return None
 
 
 def is_local_relative_path(src: str) -> bool:
@@ -260,7 +311,34 @@ def get_mimetype(filepath: Path) -> str:
     return mime_type
 
 
-def replace_alt_text_in_chapter_content(chapter_content: str, images: Images):
+def detect_format(path: Path) -> ChapterFormat:
+    """
+    Return a ChapterFormat string, given Path
+    to an html or asciidoc file
+    """
+    if path.suffix.lower() in (".html", ".htm"):
+        return "html"
+    else:
+        return "asciidoc"
+
+
+def replace_alt_text_in_chapter_content(
+    chapter_content: str,
+    images: Images,
+    replace_existing_alt: bool = True
+) -> str:
+    """
+    Generate updated chapter content string by
+    replacing existing alt text with newly generated
+    alt text
+    """
+    updated_chapter_content = chapter_content
+
+    for image in images:
+        string_to_replace = image["original_img_elem_str"]
+        if (replace_existing_alt or not image['generated_alt_text']):
+            replacement_string = image["original_img_elem_str"].replace(image["original_alt_text"], image["generated_alt_text"])
+            updated_chapter_content = updated_chapter_content.replace(string_to_replace, replacement_string)
+
+    return updated_chapter_content
     
-    # return updated_content
-    pass
