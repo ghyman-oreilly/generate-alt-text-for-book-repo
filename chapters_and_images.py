@@ -1,7 +1,15 @@
 from pathlib import Path
-from typing import TypedDict, List
+from typing import TypedDict, List, Literal
 
 
+ChapterFormat = Literal["html", "asciidoc"]
+
+class Chapter(TypedDict, total=False):
+    filepath: Path
+    content: str
+    chapter_format: ChapterFormat
+    images: 'Images'
+    
 class Image(TypedDict, total=False):
     chapter_filepath: Path
     original_img_elem_str: str
@@ -17,3 +25,8 @@ class Image(TypedDict, total=False):
     alt_text_replaced: bool = False
 
 Images = List[Image]
+Chapters = List[Chapter]
+
+
+
+

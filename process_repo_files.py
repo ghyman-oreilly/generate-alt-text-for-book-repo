@@ -6,15 +6,13 @@ import mimetypes
 from pathlib import Path
 import re
 import subprocess
-from typing import Optional, Literal
+from typing import Optional
 from urllib.parse import urlparse
 
-from images import Image, Images
+from chapters_and_images import Image, Images, ChapterFormat
 
 
 logger = logging.getLogger(__name__)
-
-ChapterFormat = Literal["html", "asciidoc"]
 
 class AsciidoctorMissingError(RuntimeError):
     """Raised when the Asciidoctor CLI is not found."""

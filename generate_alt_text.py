@@ -3,7 +3,7 @@ import html
 import openai
 import os
 
-from images import Image
+from chapters_and_images import Image
 
 # Make sure API key is set
 load_dotenv()

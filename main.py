@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 import sys
 
-from images import Images
+from chapters_and_images import Images, Chapter, Chapters
 from generate_alt_text import AllTextGenerator
 from process_repo_files import (
     read_atlas_json, 
@@ -35,6 +35,7 @@ def main():
 
     img_filename_filter_list = None
 
+    # handle file filter
     if args.image_file_filter:
         image_file_filter_filepath = Path(args.image_file_filter)
         if (
@@ -52,6 +53,7 @@ def main():
             print("Exiting!")
             sys.exit(0)
 
+    # asciidoc notice and prep
     if any(f.name.lower().endswith(('.asciidoc', '.adoc')) for f in chapter_filepaths):
         print("Project contains asciidoc files. Please be patient as asciidoc files are converted to html in memory.")
         print("This will not convert your actual asciidoc files to html.")
@@ -59,25 +61,42 @@ def main():
 
     files_to_skip = ["cover.html"]
 
-    all_images: Images = []
+    all_chapters: Chapters = []
 
-    # collect image data
+    # collect chapter data
     for chapter_filepath in chapter_filepaths:
         if all(skip_str not in chapter_filepath.name for skip_str in files_to_skip):
             chapter_format = detect_format(chapter_filepath)
             with open(chapter_filepath, 'r', encoding='utf-8') as f:
                 chapter_text_content = f.read()
-            chapter_images: Images = collect_image_data_from_chapter_file(
-                chapter_text_content, 
-                chapter_filepath,
-                project_dir, 
-                args.do_not_replace_existing_alt_text, 
-                img_filename_filter_list=(img_filename_filter_list if img_filename_filter_list else None),
-                chapter_format=chapter_format
+            all_chapters.append(
+                Chapter(
+                    filepath=chapter_filepath,
+                    content=chapter_text_content,
+                    chapter_format=chapter_format
                 )
-            all_images.extend(chapter_images)
+            )
+
+    # collect image data
+    for chapter in all_chapters:
+        chapter_images: Images = collect_image_data_from_chapter_file(
+            chapter["content"], 
+            chapter["filepath"],
+            project_dir, 
+            args.do_not_replace_existing_alt_text, 
+            img_filename_filter_list=(img_filename_filter_list if img_filename_filter_list else None),
+            chapter_format=chapter["chapter_format"]
+            )
+        chapter["images"] = chapter_images
 
     alt_text_generator = AllTextGenerator()
+    
+    # create flattened chapter images list,
+    # in order to provide user with a counter
+    all_images = []
+    for chapter in all_chapters:
+        for image in chapter["images"]:
+            all_images.append(image)
 
     # generate new alt text
     for i, image in enumerate(all_images):   
@@ -85,27 +104,21 @@ def main():
         new_alt_text = alt_text_generator.generate_alt_text(image)
         image["generated_alt_text"] = new_alt_text
 
-    grouped_images: dict[Path, Images] = defaultdict(list)
-
-    # group images by chapter
-    for img in all_images:
-        fp = img.get("chapter_filepath")
-        if fp:
-            grouped_images[fp].append(img)
-
     # replace alt text in chapters
-    for chapter_filepath, images in grouped_images.items():
-        if chapter_filepath is not None:
-            print(f"Replacing alt text in chapter file: {chapter_filepath.name}")
-            with open(chapter_filepath, 'r') as f:
-                chapter_content = f.read()
-            chapter_format = detect_format(chapter_filepath)
-            updated_chapter_content = replace_alt_text_in_chapter_content(chapter_content, images, chapter_format)
-            with open(chapter_filepath, 'w') as f:
-                f.write(updated_chapter_content)
-            for image in images:
-                if image["alt_text_replaced"]:
-                    print(f"Alt text replaced for image {image["image_src"].split('/')[-1]}")
+    for chapter in all_chapters:
+        if not chapter["images"]:
+            continue   
+        print(f"Replacing alt text in chapter file: {chapter["filepath"].name}")
+        updated_chapter_content = replace_alt_text_in_chapter_content(
+            chapter["content"], 
+            chapter["images"], 
+            not(args.do_not_replace_existing_alt_text)
+            )
+        with open(chapter["filepath"], 'w') as f:
+            f.write(updated_chapter_content)
+        for image in chapter["images"]:
+            if image["alt_text_replaced"]:
+                print(f"Alt text replaced for image {image["image_src"].split('/')[-1]}")
 
     print("Scripted completed.")
     
