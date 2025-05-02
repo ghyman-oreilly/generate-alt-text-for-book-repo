@@ -7,7 +7,7 @@ from pathlib import Path
 import os
 import re
 import subprocess
-from typing import Optional
+from typing import Optional, Literal
 from urllib.parse import urlparse
 
 from images import Image, Images, ChapterFormat
@@ -15,6 +15,7 @@ from images import Image, Images, ChapterFormat
 
 logger = logging.getLogger(__name__)
 
+ChapterFormat = Literal["html", "asciidoc"]
 
 class AsciidoctorMissingError(RuntimeError):
     """Raised when the Asciidoctor CLI is not found."""

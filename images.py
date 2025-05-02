@@ -1,8 +1,6 @@
 from pathlib import Path
-from typing import TypedDict, List, Literal
+from typing import TypedDict, List
 
-
-ChapterFormat = Literal["html", "asciidoc"]
 
 class Image(TypedDict, total=False):
     chapter_filepath: Path
@@ -17,10 +15,4 @@ class Image(TypedDict, total=False):
     base64_str: str
     img_data_uri: str
 
-class Chapter(TypedDict):
-    chapter_filepath: Path
-    images: List[Image]
-    chapter_format: ChapterFormat
-
 Images = List[Image]
-Chapters = List[Chapter]

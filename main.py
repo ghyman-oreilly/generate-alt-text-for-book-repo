@@ -3,7 +3,7 @@ from collections import defaultdict
 from pathlib import Path
 import sys
 
-from images import Images, Chapter, Chapters, ChapterFormat
+from images import Images
 from generate_alt_text import AllTextGenerator
 from process_repo_files import (
     read_atlas_json, 
