@@ -9,7 +9,7 @@ import subprocess
 from typing import Optional, Literal
 from urllib.parse import urlparse
 
-from images import Image, Images, ChapterFormat
+from images import Image, Images
 
 
 logger = logging.getLogger(__name__)
