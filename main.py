@@ -30,7 +30,7 @@ def main():
 
     project_dir = atlas_filepath.parent
     
-    chapter_files = read_atlas_json(atlas_filepath)
+    chapter_filepaths = read_atlas_json(atlas_filepath)
 
     img_filename_filter_list = None
 
@@ -51,7 +51,7 @@ def main():
             print("Exiting!")
             sys.exit(0)
 
-    if any(f.name.lower().endswith(('.asciidoc', '.adoc')) for f in chapter_files):
+    if any(f.name.lower().endswith(('.asciidoc', '.adoc')) for f in chapter_filepaths):
         print("Project contains asciidoc files. Please be patient as asciidoc files are converted to html in memory.")
         print("This will not convert your actual asciidoc files to html.")
         check_asciidoctor_installed()
@@ -60,11 +60,14 @@ def main():
 
     all_images: Images = []
 
-    for file in chapter_files:
-        if all(skip_str not in file.name for skip_str in files_to_skip):
-            chapter_format = detect_format(file)
+    for chapter_filepath in chapter_filepaths:
+        if all(skip_str not in chapter_filepath.name for skip_str in files_to_skip):
+            chapter_format = detect_format(chapter_filepath)
+            with open(chapter_filepath, 'r', encoding='utf-8') as f:
+                chapter_text_content = f.read()
             chapter_images: Images = collect_image_data_from_chapter_file(
-                file, 
+                chapter_text_content, 
+                chapter_filepath,
                 project_dir, 
                 args.do_not_replace_existing_alt_text, 
                 img_filename_filter_list=(img_filename_filter_list if img_filename_filter_list else None),

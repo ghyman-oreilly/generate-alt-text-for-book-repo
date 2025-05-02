@@ -81,53 +81,50 @@ def check_asciidoctor_installed(raise_on_error=True) -> bool:
         return False
 
 
-def convert_asciidoc_to_html(file_path: Path) -> str:
+def convert_asciidoc_string_to_html(asciidoc_content: str) -> str:
     """
-    Convert an AsciiDoc file to HTML using the Asciidoctor CLI.
-
-    Stylesheets and captioning are turned off with `-a stylesheet!` and `-a caption`.
-    Output is captured and returned as a string.
+    Convert an AsciiDoc string to HTML using the Asciidoctor CLI.
 
     Args:
-        file_path (Path): Path to the AsciiDoc file to convert.
+        asciidoc_content (str): AsciiDoc content as a string.
 
     Returns:
-        str: HTML content generated from the AsciiDoc input.
+        str: HTML resulting from the AsciiDoc conversion.
 
     Raises:
-        AsciidoctorConversionError: If the conversion process fails.
+        AsciidoctorConversionError: If the conversion fails.
     """
     try:
         result = subprocess.run(
             [
-                'asciidoctor',
-                '-a', 'stylesheet!',
-                '-a', 'caption',
-                '-o', '-',  # output to stdout
-                file_path
+                "asciidoctor",
+                "-a", "stylesheet!",
+                "-a", "caption",
+                "-",             # input from stdin
+                "-o", "-"        # output to stdout
             ],
+            input=asciidoc_content,
             capture_output=True,
             text=True,
-            check=True  # ← raises CalledProcessError on failure
+            check=True
         )
-        logger.debug(f"Converted {file_path} to HTML successfully.")
+        logger.debug("Converted AsciiDoc string to HTML successfully.")
         return result.stdout
     except subprocess.CalledProcessError as e:
-        logger.error("Asciidoctor conversion failed.")
+        logger.error("Asciidoctor conversion from string failed.")
         logger.debug(f"Command: {e.cmd}")
         logger.debug(f"Exit code: {e.returncode}")
         logger.debug(f"Stdout: {e.stdout}")
         logger.error(f"Stderr: {e.stderr}")
-        raise AsciidoctorConversionError(
-            f"Failed to convert AsciiDoc file '{file_path}' to HTML."
-        ) from e
+        raise AsciidoctorConversionError("Failed to convert AsciiDoc string to HTML.") from e
     except FileNotFoundError:
         logger.error("The 'asciidoctor' CLI was not found. Is it installed?")
         raise AsciidoctorConversionError("Asciidoctor CLI not found.")
 
 
 def collect_image_data_from_chapter_file(
-        chapter_filepath: Path, 
+        chapter_text_content: str,
+        chapter_filepath: Path,
         project_dir: Path, 
         skip_existing_alt_text: bool = False,
         img_filename_filter_list: Optional[list] = None,
@@ -136,16 +133,13 @@ def collect_image_data_from_chapter_file(
     """
     Given a filepath of an HTML or Asciidoc file, 
     collect data on image references, using Image structure.
-    """
-    with open(chapter_filepath, 'r', encoding='utf-8') as f:
-        text_content = f.read()
-    
+    """   
     if chapter_format.lower() == 'html':
         img_pattern = r'<img\b[^>]*?>'
-        soup = BeautifulSoup(text_content, 'html.parser')
+        soup = BeautifulSoup(chapter_text_content, 'html.parser')
     elif chapter_format.lower() == 'asciidoc':
         img_pattern = r'^(image:{1,2}(.*?)\[.*?\])'
-        html_text = convert_asciidoc_to_html(chapter_filepath)
+        html_text = convert_asciidoc_string_to_html(chapter_text_content)
         soup = BeautifulSoup(html_text, 'html.parser')
     else:
         raise ValueError(f"Unsupported file format: {chapter_format}.")
@@ -156,7 +150,7 @@ def collect_image_data_from_chapter_file(
     
     img_elements = soup.find_all('img')
 
-    img_tag_matches = re.findall(img_pattern, text_content, flags=re.I | re.DOTALL | re.MULTILINE)
+    img_tag_matches = re.findall(img_pattern, chapter_text_content, flags=re.I | re.DOTALL | re.MULTILINE)
 
     original_img_tags_by_src = {}
 
