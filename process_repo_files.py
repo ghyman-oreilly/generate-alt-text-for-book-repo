@@ -144,7 +144,7 @@ def collect_image_data_from_chapter_file(
         img_pattern = r'<img\b[^>]*?>'
         soup = BeautifulSoup(text_content, 'html.parser')
     elif chapter_format.lower() == 'asciidoc':
-        img_pattern = r'^image:{1,2}.*?\[.*?\]'
+        img_pattern = r'^(image:{1,2}(.*?)\[.*?\])'
         html_text = convert_asciidoc_to_html(chapter_filepath)
         soup = BeautifulSoup(html_text, 'html.parser')
     else:
@@ -156,16 +156,24 @@ def collect_image_data_from_chapter_file(
     
     img_elements = soup.find_all('img')
 
-    img_tag_strings = re.findall(img_pattern, text_content, flags=re.I | re.DOTALL | re.MULTILINE)
+    img_tag_matches = re.findall(img_pattern, text_content, flags=re.I | re.DOTALL | re.MULTILINE)
 
     original_img_tags_by_src = {}
 
-    for tag_html in img_tag_strings:
-        temp_soup = BeautifulSoup(tag_html, 'html.parser')
-        tag = temp_soup.find('img')
-        if tag and tag.has_attr('src'):
-            src = tag['src']
-            original_img_tags_by_src.setdefault(src, []).append(tag_html)  # Handle duplicates
+    for img_tag_match in img_tag_matches:
+        if chapter_format.lower() == 'html':
+            temp_soup = BeautifulSoup(img_tag_match, 'html.parser')
+            tag = temp_soup.find('img')
+            if tag and tag.has_attr('src'):
+                src = tag['src']
+                img_tag_string = img_tag_match
+        elif len(img_tag_match) > 1:
+            # asciidoc case
+            # first tuple member is full img string, second is src
+            src = img_tag_match[1]
+            img_tag_string = img_tag_match[0]
+        if src:
+            original_img_tags_by_src.setdefault(src, []).append(img_tag_string)  # Handle duplicates
 
     images = []
 
