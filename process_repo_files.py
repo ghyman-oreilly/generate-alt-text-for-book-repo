@@ -177,7 +177,6 @@ def collect_image_data_from_chapter_file(
         if not img_src:
             continue
         elif 'callouts/' in img_src:
-            logger.info(f"Skipping callout image: {img_src}")
             continue
 
         img_filepath = resolve_image_path(project_dir, img_src)
@@ -190,7 +189,7 @@ def collect_image_data_from_chapter_file(
             img_filename_filter_list is not None and
             img_filepath.name not in img_filename_filter_list
             ):
-            logger.info(f"Image not included in filter list. Skipping image: {img_src}")
+            # if a filter list is present, skip images not in list
             continue
 
         if not img_filepath.suffix[1:].lower() in supported_filetypes:
@@ -341,6 +340,7 @@ def replace_alt_text_in_chapter_content(
         if (replace_existing_alt or not image['generated_alt_text']):
             replacement_string = image["original_img_elem_str"].replace(image["original_alt_text"], image["generated_alt_text"])
             updated_chapter_content = updated_chapter_content.replace(string_to_replace, replacement_string)
+            image["alt_text_replaced"] = True
 
     return updated_chapter_content
     
