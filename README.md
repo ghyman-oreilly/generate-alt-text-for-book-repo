@@ -7,6 +7,7 @@ A script for generating alt text for images in an ORM book repository.
 - Python 3.7+
 - OpenAI API key
 - [Asciidoctor](https://asciidoctor.org)
+- [Ruby](https://www.ruby-lang.org/en/) (a [dependency of Asciidoctor](https://asciidoctor.org/#requirements))
 
 ### Setup
 
@@ -30,7 +31,13 @@ A script for generating alt text for images in an ORM book repository.
 	echo "OPENAI_API_KEY=sk-your-api-key-here" >> .env
 	```
 
-4. Install [Asciidoctor](https://asciidoctor.org) on your system. On mac, you can use brew to install Asciidoctor:
+4. Check if you have an installation of Ruby on your system. On macOS, you can do this by running `ruby --version`. If Ruby is not installed, install it by following the instructions on the [Ruby website](https://www.ruby-lang.org/en/downloads/) or, on macOS, by using brew:
+
+	```bash
+	brew install ruby
+	```
+
+5. Install [Asciidoctor](https://asciidoctor.org) on your system. On macOS, you can use brew to install Asciidoctor:
 
 	```bash
 	brew doctor
