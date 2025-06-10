@@ -47,7 +47,8 @@ def main():
                 line.strip() for line in f
                 if line.strip() and not line.strip().startswith("#")
             ]    
-        if not input(f"Permitted image filenames based on your filter file include the following:\n{'\n'.join(img_filename_filter_list)}\nDo you wish to continue (y/n)? ").strip().lower() in ['y', 'yes']:
+        img_filename_filter_list_str = '\n'.join(img_filename_filter_list)
+        if not input(f"Permitted image filenames based on your filter file include the following:\n{img_filename_filter_list_str}\nDo you wish to continue (y/n)? ").strip().lower() in ['y', 'yes']:
             print("Exiting!")
             sys.exit(0)
 
@@ -106,7 +107,7 @@ def main():
     for chapter in all_chapters:
         if not chapter["images"]:
             continue   
-        print(f"Replacing alt text in chapter file: {chapter["filepath"].name}")
+        print(f"Replacing alt text in chapter file: {chapter['filepath'].name}")
         updated_chapter_content = replace_alt_text_in_chapter_content(
             chapter["content"], 
             chapter["images"], 
@@ -116,7 +117,7 @@ def main():
             f.write(updated_chapter_content)
         for image in chapter["images"]:
             if image["alt_text_replaced"]:
-                print(f"Alt text replaced for image {image["image_src"].split('/')[-1]}")
+                print(f"Alt text replaced for image {image['image_src'].split('/')[-1]}")
 
     print("Scripted completed.")
     

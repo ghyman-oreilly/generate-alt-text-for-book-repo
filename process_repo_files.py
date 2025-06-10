@@ -24,7 +24,7 @@ class AsciidoctorConversionError(RuntimeError):
     pass
 
 
-def read_atlas_json(atlas_path: Path) -> list[Path] | None:
+def read_atlas_json(atlas_path: Path) -> Optional[list[Path]]:
     """
     Get list of chapter files from atlas.json.
 
@@ -276,7 +276,7 @@ def is_local_relative_path(src: str) -> bool:
     )
 
 
-def resolve_image_path(project_dir: Path, src: str) -> Path | None:
+def resolve_image_path(project_dir: Path, src: str) -> Optional[Path]:
     if is_local_relative_path(src):
         candidate_path = project_dir / src
         if candidate_path.exists():
