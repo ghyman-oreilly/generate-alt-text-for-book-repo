@@ -52,6 +52,7 @@ def main():
     chapter_filepaths = read_atlas_json(atlas_filepath)
 
     img_filename_filter_list = None
+    path_to_conversion_templates = Path(__file__).parent / "templates"
 
     # handle file filter
     if args.image_file_filter and not args.load_data_from_json:
@@ -107,10 +108,11 @@ def main():
         # collect image data
         for chapter in all_chapters:
             chapter_images: Images = collect_image_data_from_chapter_file(
-                chapter.content, 
-                chapter.filepath,
-                project_dir, 
-                args.do_not_replace_existing_alt_text, 
+                chapter_text_content=chapter.content, 
+                chapter_filepath=chapter.filepath,
+                project_dir=project_dir, 
+                conversion_templates_dir=path_to_conversion_templates,
+                skip_existing_alt_text=args.do_not_replace_existing_alt_text, 
                 img_filename_filter_list=(img_filename_filter_list if img_filename_filter_list else None),
                 chapter_format=chapter.chapter_format
                 )

@@ -6,7 +6,7 @@ import mimetypes
 from pathlib import Path
 import re
 import subprocess
-from typing import Optional
+from typing import Optional, Union
 from urllib.parse import urlparse
 
 from chapters_and_images import Image, Images, ChapterFormat
@@ -79,7 +79,7 @@ def check_asciidoctor_installed(raise_on_error=True) -> bool:
         return False
 
 
-def convert_asciidoc_string_to_html(asciidoc_content: str) -> str:
+def convert_asciidoc_string_to_html(asciidoc_content: str, path_to_conversion_templates: Union[str, Path]) -> str:
     """
     Convert an AsciiDoc string to HTML using the Asciidoctor CLI.
 
@@ -92,12 +92,17 @@ def convert_asciidoc_string_to_html(asciidoc_content: str) -> str:
     Raises:
         AsciidoctorConversionError: If the conversion fails.
     """
+    if not isinstance(path_to_conversion_templates, str):
+        path_to_conversion_templates = str(path_to_conversion_templates)
+    
     try:
         result = subprocess.run(
             [
                 "asciidoctor",
                 "-a", "stylesheet!",
                 "-a", "caption",
+                "-T", path_to_conversion_templates,
+                '-E', 'erb',  # template engine
                 "-",             # input from stdin
                 "-o", "-"        # output to stdout
             ],
@@ -124,6 +129,7 @@ def collect_image_data_from_chapter_file(
         chapter_text_content: str,
         chapter_filepath: Path,
         project_dir: Path, 
+        conversion_templates_dir: Union[str, Path],
         skip_existing_alt_text: bool = False,
         img_filename_filter_list: Optional[list] = None,
         chapter_format: ChapterFormat = 'html'
@@ -137,7 +143,7 @@ def collect_image_data_from_chapter_file(
         soup = BeautifulSoup(chapter_text_content, 'html.parser')
     elif chapter_format.lower() == 'asciidoc':
         img_pattern = r'^(image:{1,2}(.*?)\[.*?\])'
-        html_text = convert_asciidoc_string_to_html(chapter_text_content)
+        html_text = convert_asciidoc_string_to_html(chapter_text_content, conversion_templates_dir)
         soup = BeautifulSoup(html_text, 'html.parser')
     else:
         raise ValueError(f"Unsupported file format: {chapter_format}.")

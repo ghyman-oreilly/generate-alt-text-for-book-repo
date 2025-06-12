@@ -1,0 +1,1 @@
+<%#encoding:UTF-8%><img src="<%= image_uri(@target) %>" alt="<%= attr 'alt' %>"<%= attr?('alt') && attr('alt') != attr('default-alt') ? %( alt="#{attr 'alt'}") : nil %><%= attr?('height') ? %( height="#{attr 'height'}") : nil %><%= attr?('role') ? %( #{attr 'role'}) : nil %>/>
