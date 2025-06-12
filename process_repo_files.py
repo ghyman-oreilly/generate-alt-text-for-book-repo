@@ -334,7 +334,7 @@ def replace_alt_text_in_chapter_content(
 
     for image in images:
         string_to_replace = image.original_img_elem_str
-        if (replace_existing_alt or not image.generated_alt_text):
+        if (replace_existing_alt or not image.original_alt_text):
             replacement_string = image.original_img_elem_str.replace(image.original_alt_text, image.generated_alt_text)
             updated_chapter_content = updated_chapter_content.replace(string_to_replace, replacement_string)
             image.alt_text_replaced = True
