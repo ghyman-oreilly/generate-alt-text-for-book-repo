@@ -340,6 +340,10 @@ def replace_alt_text_in_chapter_content(
     updated_chapter_content = chapter_content
 
     for image in images:
+        if not image.generated_alt_text:
+            logger.warning(f"Skipping image {image.image_filepath.name}: no AI-generated alt text found.")
+            continue
+        
         string_to_replace = image.original_img_elem_str
         if (replace_existing_alt or not image.original_alt_text):           
             if chapter_format == 'html':

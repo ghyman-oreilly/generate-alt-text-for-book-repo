@@ -160,6 +160,9 @@ def main():
         for image in chapter.images:
             if image.alt_text_replaced:
                 print(f"Alt text replaced for image {image.image_src.split('/')[-1]}")
+    
+    # final backup
+    write_backup_to_json_file(all_chapters, backup_filepath)
 
     print("Scripted completed.")
     
