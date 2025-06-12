@@ -328,6 +328,7 @@ def detect_format(path: Path) -> ChapterFormat:
 
 def replace_alt_text_in_chapter_content(
     chapter_content: str,
+    chapter_format: ChapterFormat,
     images: Images,
     replace_existing_alt: bool = True
 ) -> str:
@@ -335,15 +336,37 @@ def replace_alt_text_in_chapter_content(
     Generate updated chapter content string by
     replacing existing alt text with newly generated
     alt text
-    """
+    """   
     updated_chapter_content = chapter_content
 
     for image in images:
         string_to_replace = image.original_img_elem_str
-        if (replace_existing_alt or not image.original_alt_text):
-            replacement_string = image.original_img_elem_str.replace(image.original_alt_text, image.generated_alt_text)
-            updated_chapter_content = updated_chapter_content.replace(string_to_replace, replacement_string)
-            image.alt_text_replaced = True
+        if (replace_existing_alt or not image.original_alt_text):           
+            if chapter_format == 'html':
+                if image.original_alt_text:
+                     # we know original elem has alt attr with text value, so replacement is straightforward
+                    replacement_string = string_to_replace.replace(image.original_alt_text, image.generated_alt_text)
+                elif re.search(r'alt=', string_to_replace, flags=re.I):
+                    # case: empty alt attr
+                    replacement_string = re.sub(r'alt=".*?"', f'alt="{image.generated_alt_text}"', string_to_replace, flags=re.I)
+                else:
+                    # case: no alt attr 
+                    replacement_string = re.sub(r'<img ', f'<img alt="{image.generated_alt_text}" ', string_to_replace, flags=re.I)
+            else:
+                # asciidoc
+                if image.original_alt_text:
+                    # replacing existing alt text
+                    replacement_string = re.sub(rf'["]?{image.original_alt_text}["]?', f'"{image.generated_alt_text}"', string_to_replace)
+                elif re.search(r'\[[ ]*\]', string_to_replace):
+                    # no alt text (we removed default at conversion), no existing attrs (width or height)
+                    replacement_string = re.sub(r'\[[ ]*\]', f'["{image.generated_alt_text}"]', string_to_replace)
+                else:
+                    # existing attrs
+                    replacement_string = re.sub(r'\[', f'["{image.generated_alt_text}",', string_to_replace, count=1)
+
+            if replacement_string:
+                updated_chapter_content = updated_chapter_content.replace(string_to_replace, replacement_string)
+                image.alt_text_replaced = True
 
     return updated_chapter_content
     

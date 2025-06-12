@@ -150,9 +150,10 @@ def main():
             continue   
         print(f"Replacing alt text in chapter file: {chapter.filepath.name}")
         updated_chapter_content = replace_alt_text_in_chapter_content(
-            chapter.content, 
-            chapter.images, 
-            not(args.do_not_replace_existing_alt_text)
+            chapter_content=chapter.content, 
+            chapter_format=chapter.chapter_format,
+            images=chapter.images, 
+            replace_existing_alt=not(args.do_not_replace_existing_alt_text)
             )
         with open(str(chapter.filepath), 'w') as f:
             f.write(updated_chapter_content)
