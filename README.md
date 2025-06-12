@@ -54,5 +54,6 @@ python main.py path/to/atlas.json
 Options:
 - `--do-not-replace-existing-alt-text`: (Optional) Pass this flag to skip replacement of any existing alt text
 - `--image-file-filter`: (Optional) Pass this flag with the path to a `.txt` file containing a list of filenames delimited by newlines. Only images whose filename matches the filenames in the list will have alt text generated and added.
+- `--load-data-from-json`: (Optional) Pass this flag with the path to an optional JSON file of data backed up from a previous session. Useful for continuing your progress after a session is interrupted, without having to send all data back to the AI service. Use of this option supercedes the `--image-file-filter` option, as the image scope from backed-up session will be used.
 
 Note: Because the script rewrites files in place, it's recommended that it be run only on clean Git repos, so the changes can easily be reviewed and reverted, as needed.
