@@ -20,8 +20,6 @@ class Image(BaseModel):
     succeeding_para_text: str
     caption_text: str
     original_alt_text: str
-    base64_str: str
-    img_data_uri: str
     generated_alt_text: Optional[str] = None
     alt_text_replaced: bool = False
 

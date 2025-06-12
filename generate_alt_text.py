@@ -17,14 +17,14 @@ class AllTextGenerator:
     def __init__(self, model="gpt-4o"):
         self.model = model
 
-    def create_prompt(self, image: Image, detail="high"):
+    def create_prompt(self, image: Image, data_uri: str, detail="high"):
         """
         Build the full user prompt for a vision service call.
         """
         preceding_para_text = image.preceding_para_text
         succeeding_para_text = image.succeeding_para_text
         caption_text = image.caption_text
-        img_data_uri = image.img_data_uri
+        img_data_uri = data_uri
 
         if img_data_uri is None:
             return None
@@ -50,11 +50,11 @@ class AllTextGenerator:
             }
         ]
 
-    def generate_alt_text(self, image: Image, detail="high"):
+    def generate_alt_text(self, image: Image, data_uri: str,  detail="high"):
         """
         Generates alt text for a base64-encoded image
         """
-        prompt = self.create_prompt(image, detail)
+        prompt = self.create_prompt(image, data_uri, detail)
 
         response = client.responses.create(
             model=self.model,

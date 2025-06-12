@@ -13,7 +13,9 @@ from process_repo_files import (
     check_asciidoctor_installed, 
     collect_image_data_from_chapter_file,
     detect_format,
-    replace_alt_text_in_chapter_content
+    replace_alt_text_in_chapter_content,
+    encode_image_to_base64,
+    get_mimetype
     )
 
 
@@ -129,7 +131,12 @@ def main():
     for i, image in enumerate(all_images):   
         if not image.generated_alt_text:
             print(f"Generating alt text for image {i+1} of {len(all_images)}...")
-            new_alt_text = alt_text_generator.generate_alt_text(image)
+            
+            img_filepath = image.image_filepath
+            base64_str = encode_image_to_base64(img_filepath)
+            data_uri = f"data:{get_mimetype(img_filepath)};base64,{base64_str}"
+            
+            new_alt_text = alt_text_generator.generate_alt_text(image, data_uri)
             image.generated_alt_text = new_alt_text
             write_backup_to_json_file(all_chapters, backup_filepath)
         else:

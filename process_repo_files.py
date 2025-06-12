@@ -239,9 +239,6 @@ def collect_image_data_from_chapter_file(
         if not img_filepath.exists():
             continue
 
-        base64_str = encode_image_to_base64(img_filepath)
-        data_uri = f"data:{get_mimetype(img_filepath)};base64,{base64_str}"
-
         images.append(Image(
             chapter_filepath=chapter_filepath,
             original_img_elem_str=original_img_tag,
@@ -250,9 +247,7 @@ def collect_image_data_from_chapter_file(
             preceding_para_text=preceding_text,
             succeeding_para_text=succeeding_text,
             caption_text=caption_text,
-            original_alt_text=img_alt_text,
-            base64_str=base64_str,
-            img_data_uri=data_uri,
+            original_alt_text=img_alt_text
         ))
 
     return images
