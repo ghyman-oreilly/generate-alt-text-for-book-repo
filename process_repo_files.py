@@ -170,6 +170,10 @@ def collect_image_data_from_chapter_file(
     images = []
 
     for img_elem in img_elements:
+        caption_tag = None
+        preceding_para = None
+        succeeding_para = None
+        
         img_src = img_elem.get('src')
         
         if not img_src:
