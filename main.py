@@ -19,13 +19,13 @@ from process_repo_files import (
 
 def write_backup_to_json_file(input_data: list[Chapter], output_filepath: Union[str, Path]):
     with open(str(output_filepath), 'w') as f:
-        f.write(json.dumps(input_data))
+        json.dump([i.model_dump(mode="json") for i in input_data], f)
 
 
 def read_backup_from_json_file(input_filepath: Union[str, Path]):
     with open(str(input_filepath), 'r') as f:
-        json_str = f.read()
-        return json.load(json_str)
+        chapter_data = json.load(f)
+        return [Chapter.model_validate(c) for c in chapter_data]
 
 
 def main():
@@ -72,6 +72,7 @@ def main():
 
     # load from json
     if args.load_data_from_json:
+        print("Loading repo data from JSON...")
         all_chapters = read_backup_from_json_file(args.load_data_from_json)
     else:
         # perform repo processing
@@ -84,6 +85,8 @@ def main():
         files_to_skip = ["cover.html"]
 
         all_chapters: Chapters = []
+
+        print("Extracting repo data...")
 
         # collect chapter data
         for chapter_filepath in chapter_filepaths:
@@ -102,14 +105,14 @@ def main():
         # collect image data
         for chapter in all_chapters:
             chapter_images: Images = collect_image_data_from_chapter_file(
-                chapter["content"], 
-                chapter["filepath"],
+                chapter.content, 
+                chapter.filepath,
                 project_dir, 
                 args.do_not_replace_existing_alt_text, 
                 img_filename_filter_list=(img_filename_filter_list if img_filename_filter_list else None),
-                chapter_format=chapter["chapter_format"]
+                chapter_format=chapter.chapter_format
                 )
-            chapter["images"] = chapter_images
+            chapter.images = chapter_images
 
     alt_text_generator = AllTextGenerator()
     
@@ -117,36 +120,36 @@ def main():
     # in order to provide user with a counter
     all_images = []
     for chapter in all_chapters:
-        for image in chapter["images"]:
+        for image in chapter.images:
             all_images.append(image)
 
     print(f"Sending data to AI service. Data will be iteratively backed up at {backup_filepath}")
 
     # generate new alt text
     for i, image in enumerate(all_images):   
-        if not image.get("generated_alt_text", ""):
+        if not image.generated_alt_text:
             print(f"Generating alt text for image {i+1} of {len(all_images)}...")
             new_alt_text = alt_text_generator.generate_alt_text(image)
-            image["generated_alt_text"] = new_alt_text
-            write_backup_to_json_file(all_images, backup_filepath)
+            image.generated_alt_text = new_alt_text
+            write_backup_to_json_file(all_chapters, backup_filepath)
         else:
             print(f"Skipping image {i+1} of {len(all_images)} (alt text already generated)...")
 
     # replace alt text in chapters
     for chapter in all_chapters:
-        if not chapter["images"]:
+        if not chapter.images:
             continue   
-        print(f"Replacing alt text in chapter file: {chapter['filepath'].name}")
+        print(f"Replacing alt text in chapter file: {chapter.filepath.name}")
         updated_chapter_content = replace_alt_text_in_chapter_content(
-            chapter["content"], 
-            chapter["images"], 
+            chapter.content, 
+            chapter.images, 
             not(args.do_not_replace_existing_alt_text)
             )
-        with open(chapter["filepath"], 'w') as f:
+        with open(str(chapter.filepath), 'w') as f:
             f.write(updated_chapter_content)
-        for image in chapter["images"]:
-            if image["alt_text_replaced"]:
-                print(f"Alt text replaced for image {image['image_src'].split('/')[-1]}")
+        for image in chapter.images:
+            if image.alt_text_replaced:
+                print(f"Alt text replaced for image {image.image_src.split('/')[-1]}")
 
     print("Scripted completed.")
     

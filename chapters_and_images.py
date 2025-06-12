@@ -1,16 +1,17 @@
 from pathlib import Path
-from typing import TypedDict, List, Literal
+from pydantic import BaseModel
+from typing import List, Literal, Optional
 
 
 ChapterFormat = Literal["html", "asciidoc"]
 
-class Chapter(TypedDict, total=False):
+class Chapter(BaseModel):
     filepath: Path
     content: str
     chapter_format: ChapterFormat
-    images: 'Images'
+    images: Optional['Images'] = None
     
-class Image(TypedDict, total=False):
+class Image(BaseModel):
     chapter_filepath: Path
     original_img_elem_str: str
     image_src: str
@@ -19,9 +20,9 @@ class Image(TypedDict, total=False):
     succeeding_para_text: str
     caption_text: str
     original_alt_text: str
-    generated_alt_text: str
     base64_str: str
     img_data_uri: str
+    generated_alt_text: Optional[str] = None
     alt_text_replaced: bool = False
 
 Images = List[Image]

@@ -21,20 +21,20 @@ class AllTextGenerator:
         """
         Build the full user prompt for a vision service call.
         """
-        preceding_para_text = image.get("preceding_para_text", "")
-        succeeding_para_text = image.get("succeeding_para_text", "")
-        caption_text = image.get("caption_text", "")
-        img_data_uri = image.get("img_data_uri", None)
+        preceding_para_text = image.preceding_para_text
+        succeeding_para_text = image.succeeding_para_text
+        caption_text = image.caption_text
+        img_data_uri = image.img_data_uri
 
         if img_data_uri is None:
             return None
 
         input_text = "What's in this image?"
         input_text += "\nPlease begin your response with 'This is an image of' or 'This image illustrates'"
-        input_text += "\nWhen responding, consider the image's context, including the Preceding Paragraph, Succeeding Paragraph, and Caption, if applicable." if '' not in [preceding_para_text, succeeding_para_text, caption_text] else ''
-        input_text += f"\nPreceding Paragraph: {preceding_para_text}" if preceding_para_text != '' else ''
-        input_text += f"\nSucceeding Paragraph: {succeeding_para_text}" if succeeding_para_text != '' else ''
-        input_text += f"\nCaption: {caption_text}" if caption_text != '' else ''
+        input_text += "\nWhen responding, consider the image's context, including the Preceding Paragraph, Succeeding Paragraph, and Caption, if applicable." if preceding_para_text or succeeding_para_text or caption_text else ''
+        input_text += f"\nPreceding Paragraph: {preceding_para_text}" if preceding_para_text else ''
+        input_text += f"\nSucceeding Paragraph: {succeeding_para_text}" if succeeding_para_text else ''
+        input_text += f"\nCaption: {caption_text}" if caption_text else ''
 
         return [
             {

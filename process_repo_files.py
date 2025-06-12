@@ -244,6 +244,7 @@ def collect_image_data_from_chapter_file(
 
         images.append(Image(
             chapter_filepath=chapter_filepath,
+            original_img_elem_str=original_img_tag,
             image_src=img_src,
             image_filepath=img_filepath,
             preceding_para_text=preceding_text,
@@ -252,7 +253,6 @@ def collect_image_data_from_chapter_file(
             original_alt_text=img_alt_text,
             base64_str=base64_str,
             img_data_uri=data_uri,
-            original_img_elem_str=original_img_tag,
         ))
 
     return images
@@ -338,11 +338,11 @@ def replace_alt_text_in_chapter_content(
     updated_chapter_content = chapter_content
 
     for image in images:
-        string_to_replace = image["original_img_elem_str"]
-        if (replace_existing_alt or not image['generated_alt_text']):
-            replacement_string = image["original_img_elem_str"].replace(image["original_alt_text"], image["generated_alt_text"])
+        string_to_replace = image.original_img_elem_str
+        if (replace_existing_alt or not image.generated_alt_text):
+            replacement_string = image.original_img_elem_str.replace(image.original_alt_text, image.generated_alt_text)
             updated_chapter_content = updated_chapter_content.replace(string_to_replace, replacement_string)
-            image["alt_text_replaced"] = True
+            image.alt_text_replaced = True
 
     return updated_chapter_content
     
