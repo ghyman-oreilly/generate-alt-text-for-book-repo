@@ -33,6 +33,7 @@ def create_fake_project(tmp_path):
     return atlas_path, filter_path, chapter_path
 
 def test_main_basic_end_to_end(tmp_path, monkeypatch):
+    """Basic end-to-end test of script flow/logic"""
     # Set up files in tmp_path
     atlas_path, filter_path, chapter_path = create_fake_project(tmp_path)
 
@@ -68,11 +69,11 @@ def test_main_basic_end_to_end(tmp_path, monkeypatch):
     finally:
         os.chdir(old_cwd)
 
-    # ✅ Check: Final HTML file includes generated alt text
+    # Final HTML file includes generated alt text
     updated_content = chapter_path.read_text()
     assert 'alt="A realistic alt text"' in updated_content
 
-    # ✅ Optional: Check backup file was created
+    # Check backup file was created
     backup_files = list(tmp_path.glob("backup_*.json"))
     assert len(backup_files) >= 1
     
