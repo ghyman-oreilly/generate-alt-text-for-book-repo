@@ -189,7 +189,7 @@ def collect_image_data_from_chapter_file(
 
         img_filepath = resolve_image_path(project_dir, img_src)
         
-        if not img_filepath.exists:
+        if img_filepath is None or not img_filepath.exists:
             logger.warning(f"File doesn't exist. Skipping image: {img_src}")
             continue
 
@@ -242,7 +242,7 @@ def collect_image_data_from_chapter_file(
         caption_text = (caption_tag.get_text() if caption_tag else '').strip()
 
         img_filepath = resolve_image_path(project_dir, img_src)
-        if not img_filepath.exists():
+        if img_filepath is None or not img_filepath.exists():
             continue
 
         images.append(Image(
