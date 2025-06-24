@@ -15,6 +15,16 @@ def test_read_atlas_json(tmp_path):
     assert isinstance(result, list)
     assert chapter in result
 
+def test_check_tilt_gem_installed(monkeypatch):
+    # Simulate tilt gem missing
+    def fake_run(*a, **k):
+        class Result:
+            stdout = "false"
+        return Result()
+    monkeypatch.setattr("subprocess.run", fake_run)
+    with pytest.raises(TiltGemMissingError):
+        check_tilt_gem_installed()
+
 def test_check_asciidoctor_installed(monkeypatch):
     # Simulate asciidoctor present
     monkeypatch.setattr("subprocess.run", lambda *a, **k: type("R", (), {"stdout": "asciidoctor 2.0.0"})())
