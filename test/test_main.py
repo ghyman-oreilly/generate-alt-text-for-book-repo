@@ -1,4 +1,6 @@
+import json
 from pathlib import Path
+import os
 
 from main import main
 
@@ -16,7 +18,7 @@ def create_fake_project(tmp_path):
     chapter_path.write_text(chapter_content)
 
     atlas_path = tmp_path / "atlas.json"
-    atlas_path.write_text(f'["{chapter_path.name}"]')
+    atlas_path.write_text(json.dumps({"files": [chapter_path.name]}))
 
     # Create image matching filter
     image_dir = tmp_path / "images"
@@ -34,30 +36,37 @@ def test_main_basic_end_to_end(tmp_path, monkeypatch):
     # Set up files in tmp_path
     atlas_path, filter_path, chapter_path = create_fake_project(tmp_path)
 
-    # Patch input to auto-confirm
-    monkeypatch.setattr("builtins.input", lambda _: "y")
+    # Change working directory to tmp_path so backup file is created there
+    old_cwd = os.getcwd()
+    os.chdir(tmp_path)
 
-    # Patch sys.argv to simulate command-line args
-    monkeypatch.setattr(
-        "sys.argv",
-        ["script_name", str(atlas_path), "--image-file-filter", str(filter_path)]
-    )
+    try:
+        # Patch input to auto-confirm
+        monkeypatch.setattr("builtins.input", lambda _: "y")
 
-    # Patch __file__ to allow template path resolution
-    monkeypatch.setattr("generate_alt_text.__file__", str(Path(__file__)))
+        # Patch sys.argv to simulate command-line args
+        monkeypatch.setattr(
+            "sys.argv",
+            ["script_name", str(atlas_path), "--image-file-filter", str(filter_path)]
+        )
 
-    # Patch AllTextGenerator so we don't hit a real API
-    class FakeGenerator:
-        def generate_alt_text(self, image_obj, data_uri):
-            return "A realistic alt text"
-    monkeypatch.setattr("generate_alt_text.AllTextGenerator", lambda: FakeGenerator())
+        # Patch __file__ to allow template path resolution
+        monkeypatch.setattr("generate_alt_text.__file__", str(Path(__file__)))
 
-    # Patch image encoding (base64 doesn't matter here)
-    monkeypatch.setattr("generate_alt_text.encode_image_to_base64", lambda path: "BASE64")
-    monkeypatch.setattr("generate_alt_text.get_mimetype", lambda path: "image/jpeg")
+        # Patch AllTextGenerator so we don't hit a real API
+        class FakeGenerator:
+            def generate_alt_text(self, image_obj, data_uri):
+                return "A realistic alt text"
+        monkeypatch.setattr("main.AllTextGenerator", lambda: FakeGenerator())
 
-    # Run the script
-    main()
+        # Patch image encoding (base64 doesn't matter here)
+        monkeypatch.setattr("process_repo_files.encode_image_to_base64", lambda path: "BASE64")
+        monkeypatch.setattr("process_repo_files.get_mimetype", lambda path: "image/jpeg")
+
+        # Run the script
+        main()
+    finally:
+        os.chdir(old_cwd)
 
     # ✅ Check: Final HTML file includes generated alt text
     updated_content = chapter_path.read_text()
