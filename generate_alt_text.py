@@ -5,11 +5,28 @@ import os
 
 from chapters_and_images import Image
 
-# Make sure API key is set
-load_dotenv()
 
-# initialize client
-api_key = os.getenv("OPENAI_API_KEY")
+class OpenAIKeyMissingError(RuntimeError):
+    """Raised when the OpenAI API key is not found in the environment."""
+    pass
+
+def check_api_key(dotenv_path=None):
+    """Check for OpenAI API key and raise error if missing."""
+    if dotenv_path is None:
+        # Get the directory containing this script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        dotenv_path = os.path.join(script_dir, '.env')
+    
+    load_dotenv(dotenv_path=dotenv_path)
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise OpenAIKeyMissingError(
+            "OPENAI_API_KEY not found in environment. Please set it in your .env file or environment variables."
+        )
+    return api_key
+
+# Run at import time so we fail fast
+api_key = check_api_key()
 client = openai.OpenAI(api_key=api_key)
 
 
