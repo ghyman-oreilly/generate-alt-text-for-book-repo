@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 import pytest
@@ -160,3 +161,68 @@ def test_filtered_integration(tmp_path, monkeypatch):
         monkeypatch=monkeypatch,
         image_filter_list=image_filter_list
     )
+
+def test_do_not_replace_existing_alt_text(tmp_path, monkeypatch):
+    """Test that --do-not-replace-existing-alt-text flag works correctly."""
+    # Create a simple HTML file with two images
+    test_html = """
+    <html>
+    <body>
+        <img src="images/existing.png" alt="Existing alt text">
+        <img src="images/missing.png" alt="">
+    </body>
+    </html>
+    """
+    chapter_file = tmp_path / "chapter.html"
+    chapter_file.write_text(test_html)
+
+    # Create images directory and dummy image files
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    (images_dir / "existing.png").touch()
+    (images_dir / "missing.png").touch()
+
+    # Create minimal atlas.json
+    atlas_json = {
+        "files": ["chapter.html"]
+    }
+    atlas_path = tmp_path / "atlas.json"
+    atlas_path.write_text(json.dumps(atlas_json))
+
+    # Patch AllTextGenerator to return predictable alt text
+    class FakeGenerator:
+        def generate_alt_text(self, image_obj, data_uri):
+            return f"ALT for {image_obj.image_src}"
+    monkeypatch.setattr("main.AllTextGenerator", lambda: FakeGenerator())
+
+    # Patch input to auto-confirm
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    # Run main with --do-not-replace-existing-alt-text flag
+    monkeypatch.setattr(
+        "sys.argv",
+        ["script_name", str(atlas_path), "--do-not-replace-existing-alt-text"],
+    )
+
+    # Change working directory to tmp_path
+    old_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        main()
+    finally:
+        os.chdir(old_cwd)
+
+    # Read the modified HTML
+    modified_content = chapter_file.read_text()
+
+    # Check that the existing alt text wasn't changed
+    assert 'src="images/existing.png" alt="Existing alt text"' in modified_content, \
+        "Existing alt text should not have been replaced"
+
+    # Check that missing alt text was added
+    assert 'src="images/missing.png" alt="ALT for images/missing.png"' in modified_content, \
+        "Missing alt text should have been added"
+
+    # Assert: Backup file was created
+    backup_files = list(tmp_path.glob("backup_*.json"))
+    assert backup_files, "Backup file was not created"
