@@ -226,3 +226,104 @@ def test_do_not_replace_existing_alt_text(tmp_path, monkeypatch):
     # Assert: Backup file was created
     backup_files = list(tmp_path.glob("backup_*.json"))
     assert backup_files, "Backup file was not created"
+
+def test_load_from_json(tmp_path, monkeypatch):
+    """Test loading and processing data from a JSON backup file."""
+    # Create test chapter files
+    chapter1 = tmp_path / "chapter1.html"
+    chapter1.write_text("""
+    <html><body>
+        <img src="images/img1.png" alt="">
+        <img src="images/img2.png" alt="">
+    </body></html>
+    """)
+
+    # Create images directory and dummy image files
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    (images_dir / "img1.png").touch()
+    (images_dir / "img2.png").touch()
+
+    # Create a mock backup JSON with some images already processed
+    mock_backup = [
+        {
+            "filepath": str(chapter1),
+            "content": chapter1.read_text(),
+            "chapter_format": "html",
+            "images": [
+                {
+                    "chapter_filepath": str(chapter1),
+                    "original_img_elem_str": '<img src="images/img1.png" alt="">',
+                    "image_src": "images/img1.png",
+                    "image_filepath": str(images_dir / "img1.png"),
+                    "preceding_para_text": "",
+                    "succeeding_para_text": "",
+                    "caption_text": "",
+                    "original_alt_text": "",
+                    "generated_alt_text": "Already generated alt text",  # This one is done
+                    "alt_text_replaced": False
+                },
+                {
+                    "chapter_filepath": str(chapter1),
+                    "original_img_elem_str": '<img src="images/img2.png" alt="">',
+                    "image_src": "images/img2.png",
+                    "image_filepath": str(images_dir / "img2.png"),
+                    "preceding_para_text": "",
+                    "succeeding_para_text": "",
+                    "caption_text": "",
+                    "original_alt_text": "",
+                    "generated_alt_text": None,  # This one needs processing
+                    "alt_text_replaced": False
+                }
+            ]
+        }
+    ]
+
+    # Write mock backup to JSON file
+    backup_file = tmp_path / "mock_backup.json"
+    backup_file.write_text(json.dumps(mock_backup))
+
+    # Create atlas.json
+    atlas_json = {
+        "files": ["chapter1.html"]
+    }
+    atlas_path = tmp_path / "atlas.json"
+    atlas_path.write_text(json.dumps(atlas_json))
+
+    # Patch AllTextGenerator to return predictable alt text
+    class FakeGenerator:
+        def generate_alt_text(self, image_obj, data_uri):
+            return f"ALT for {image_obj.image_src}"
+    monkeypatch.setattr("main.AllTextGenerator", lambda: FakeGenerator())
+
+    # Patch input to auto-confirm
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    # Run main with --load-data-from-json flag
+    monkeypatch.setattr(
+        "sys.argv",
+        ["script_name", str(atlas_path), "--load-data-from-json", str(backup_file)],
+    )
+
+    # Change working directory to tmp_path
+    old_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        main()
+    finally:
+        os.chdir(old_cwd)
+
+    # Read the modified HTML
+    modified_content = chapter1.read_text()
+
+    # Check that the already-processed image kept its alt text
+    assert 'src="images/img1.png" alt="Already generated alt text"' in modified_content, \
+        "Previously generated alt text should be preserved"
+
+    # Check that the unprocessed image got new alt text
+    assert 'src="images/img2.png" alt="ALT for images/img2.png"' in modified_content, \
+        "New alt text should be generated for unprocessed image"
+
+    # Assert: New backup file was created
+    new_backup_files = list(tmp_path.glob("backup_*.json"))
+    assert new_backup_files, "New backup file was not created"
