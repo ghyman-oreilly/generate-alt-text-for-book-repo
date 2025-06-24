@@ -19,6 +19,10 @@ class AsciidoctorMissingError(RuntimeError):
     pass
 
 
+class TiltGemMissingError(RuntimeError):
+    """Raised when the tilt Ruby gem is not installed."""
+    pass
+
 class AsciidoctorConversionError(RuntimeError):
     """Raised when Asciidoctor fails to convert a file."""
     pass
@@ -51,6 +55,29 @@ def read_atlas_json(atlas_path: Path) -> Optional[list[Path]]:
 
     return chapter_files
 
+def check_tilt_gem_installed(raise_on_error=True) -> bool:
+    """Check if the tilt Ruby gem is installed."""
+    try:
+        result = subprocess.run(
+            ["gem", "list", "-i", "tilt"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        if "true" in result.stdout.lower():
+            return True
+        else:
+            msg = "The 'tilt' Ruby gem is not installed. Please run: gem install tilt"
+            logger.error(msg)
+            if raise_on_error:
+                raise TiltGemMissingError(msg)
+            return False
+    except FileNotFoundError:
+        msg = "RubyGems (gem) is not installed or not in PATH."
+        logger.error(msg)
+        if raise_on_error:
+            raise TiltGemMissingError(msg)
+        return False
 
 def check_asciidoctor_installed(raise_on_error=True) -> bool:
     """Check if the asciidoctor CLI is available on the system."""

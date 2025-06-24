@@ -11,6 +11,7 @@ from generate_alt_text import AllTextGenerator
 from process_repo_files import (
     read_atlas_json, 
     check_asciidoctor_installed, 
+    check_tilt_gem_installed,
     collect_image_data_from_chapter_file,
     detect_format,
     replace_alt_text_in_chapter_content,
@@ -84,6 +85,7 @@ def main():
             print("Project contains asciidoc files. Please be patient as asciidoc files are converted to html in memory.")
             print("This will not convert your actual asciidoc files to html.")
             check_asciidoctor_installed()
+            check_tilt_gem_installed()
 
         files_to_skip = ["cover.html"]
 
