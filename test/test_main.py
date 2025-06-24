@@ -2,14 +2,9 @@ import json
 from pathlib import Path
 import os
 
-from main import main
+from main import main, write_backup_to_json_file, read_backup_from_json_file
+from chapters_and_images import Chapter
 
-
-def test_write_backup_to_json_file():
-	pass
-
-def test_read_backup_from_json_file():
-	pass
 
 def create_fake_project(tmp_path):
     # Create chapter HTML and atlas.json
@@ -32,6 +27,7 @@ def create_fake_project(tmp_path):
 
     return atlas_path, filter_path, chapter_path
 
+
 def test_main_basic_end_to_end(tmp_path, monkeypatch):
     """Basic end-to-end test of script flow/logic"""
     # Set up files in tmp_path
@@ -48,7 +44,7 @@ def test_main_basic_end_to_end(tmp_path, monkeypatch):
         # Patch sys.argv to simulate command-line args
         monkeypatch.setattr(
             "sys.argv",
-            ["script_name", str(atlas_path), "--image-file-filter", str(filter_path)]
+            ["script_name", str(atlas_path), "--image-file-filter", str(filter_path)],
         )
 
         # Patch __file__ to allow template path resolution
@@ -58,6 +54,7 @@ def test_main_basic_end_to_end(tmp_path, monkeypatch):
         class FakeGenerator:
             def generate_alt_text(self, image_obj, data_uri):
                 return "A realistic alt text"
+
         monkeypatch.setattr("main.AllTextGenerator", lambda: FakeGenerator())
 
         # Patch image encoding (base64 doesn't matter here)
@@ -76,4 +73,31 @@ def test_main_basic_end_to_end(tmp_path, monkeypatch):
     # Check backup file was created
     backup_files = list(tmp_path.glob("backup_*.json"))
     assert len(backup_files) >= 1
-    
+
+
+def test_write_backup_to_json_file_and_read(tmp_path):
+    """
+    Test write_backup_to_json_file and
+    read_backup_from_json_file
+    """
+    # Create a minimal Chapter object (using dummy values)
+    chapter = Chapter(
+        filepath=tmp_path / "chapter1.html",
+        content="<html>test</html>",
+        chapter_format="html",
+        images=[],
+    )
+    backup_path = tmp_path / "backup_test.json"
+    # Write backup
+    write_backup_to_json_file([chapter], backup_path)
+    assert backup_path.exists()
+    # Read backup
+    loaded = read_backup_from_json_file(backup_path)
+    assert isinstance(loaded, list)
+    assert len(loaded) == 1
+    loaded_chapter = loaded[0]
+    assert loaded_chapter.filepath == chapter.filepath
+    assert loaded_chapter.content == chapter.content
+    assert loaded_chapter.chapter_format == chapter.chapter_format
+    assert loaded_chapter.images == chapter.images
+
