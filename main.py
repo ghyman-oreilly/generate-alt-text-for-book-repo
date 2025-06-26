@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import sys
 import time
-from typing import Union
+from typing import Optional, Union
 
 from chapters_and_images import Chapter, Chapters, Image, Images
 from generate_alt_text import AllTextGenerator
@@ -40,15 +40,45 @@ def write_review_data_to_csv_file(input_data: list[Image], output_filepath: Unio
         writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL)
         writer.writerows(img_filepath_and_alt_texts)
 
-def read_review_data_from_csv_file():
-    pass
+def read_review_data_from_csv_file(input_filepath: Union[str, Path]) -> list[tuple[str, str]]:
+    """
+    Expected structure in CSV is:
+    | img src path | alt text    
 
+    Output a list of tuples with same
+    """
+    img_src_and_alt_text: Optional[list[tuple[str, str]]] = []
+    with open(str(input_filepath), 'r', newline='', encoding='utf-8') as file:
+        reader = csv.reader(file)
+        data = list(reader)
+    for row in data:
+        img_src_and_alt_text.append((row[0], row[1]))
+    return img_src_and_alt_text
+
+def merge_review_data_with_repo_data(
+        updated_img_src_and_alt_text: list[tuple[str, str]],
+        all_chapters: list[Chapter]
+    ):
+    """
+    Merge updated alt text into Chapter data
+
+    Args:
+        updated_img_src_and_alt_text: list of tuples (img_src, alt_text)
+        all_chapters: list of Chapter data    
+    """
+    img_src_alt_text_map = {img_src: alt_text for img_src, alt_text in updated_img_src_and_alt_text}
+    for chapter in all_chapters:
+        for image in chapter.images:
+            if img_src_alt_text_map.get(image.image_src, None):
+                image.generated_alt_text = img_src_alt_text_map[image.image_src]
+            
 def main():
     parser = argparse.ArgumentParser(description="Script for generating alt text for images in an ORM book repo.")
     parser.add_argument("atlas_path", help="Path to the atlas.json file")
     parser.add_argument("--do-not-replace-existing-alt-text", action="store_true", help="Skip generation of alt text for any images that already have it. By default, all alt text is replaced.")
     parser.add_argument("--image-file-filter", default=None, help="Provide the path to an optional newline-delimited text file of image filenames. If path is provided, only images matching the filenames in the text file will be processed.")
-    parser.add_argument("--load-data-from-json", default=None, help="Provide the path to an optional JSON file of data backed up from a previous session. Useful for continuing your progress after a session is interrupted, without having to send all data back to the AI service. Use of this option supercedes the `--image-file-filter` option, as the image scope from backed-up session will be used.")
+    parser.add_argument("--load-data-from-json", default=None, help="Provide the path to an optional JSON file of data backed up from a previous session. Useful for continuing your progress after a session is interrupted, without having to send all data back to the AI service. Use of this option supercedes the `--image-file-filter` option, as the image scope from backed-up session will be used. NOTE: Do not use this option if you've made changes in the repo since the backup file was produced, as it may overwrite your changes.")
+    parser.add_argument("--update-alt-text-from-csv", default=None, help="Provide the path to an optional CSV file of img src paths and alt text to be used in making replacements. Useful for making adjustments to AI-generated alt text before adding that text to the repo. This option is safe to use if you've made changes in the repo since the CSV review file was produced.")
 
     args = parser.parse_args()
 
@@ -65,6 +95,7 @@ def main():
     
     chapter_filepaths = read_atlas_json(atlas_filepath)
 
+    csv_filepath = None
     img_filename_filter_list = None
     path_to_conversion_templates = Path(__file__).parent / "templates"
 
@@ -87,6 +118,16 @@ def main():
             print("Exiting!")
             sys.exit(0)
 
+    # handle CSV option
+    if csv_filepath := args.update_alt_text_from_csv:
+        csv_filepath = Path(csv_filepath)
+        if (
+            not csv_filepath.exists() or 
+            not csv_filepath.is_file() or
+            csv_filepath.suffix[1:].lower() != 'csv'
+            ):
+            raise ValueError("CSV filepath must point to a valid CSV (.csv) file.")
+
     # load from json
     if args.load_data_from_json:
         print("Loading repo data from JSON...")
@@ -94,6 +135,8 @@ def main():
     else:
         # perform repo processing
         # asciidoc notice and prep
+        # Note: we'll do this with the update_alt_text_from_csv use case as well, 
+        # to ensure the replacements are made with fresh content
         if any(f.name.lower().endswith(('.asciidoc', '.adoc')) for f in chapter_filepaths):
             print("Project contains asciidoc files. Please be patient as asciidoc files are converted to html in memory.")
             print("This will not convert your actual asciidoc files to html.")
@@ -133,31 +176,38 @@ def main():
                 )
             chapter.images = chapter_images
 
-    alt_text_generator = AllTextGenerator()
-    
-    # create flattened chapter images list,
-    # in order to provide user with a counter
+    # create flattened chapter images list
     all_images = []
     for chapter in all_chapters:
         for image in chapter.images:
             all_images.append(image)
 
-    print(f"Sending data to AI service. Data will be iteratively backed up at {backup_filepath}")
+    if not csv_filepath:
+        # this is executed in the case of load_data_from_json
+        # to ensure we finish accumulating alt text, if/as needed
+        alt_text_generator = AllTextGenerator()
+        
+        print(f"Sending data to AI service. Data will be iteratively backed up at {backup_filepath}")
 
-    # generate new alt text
-    for i, image in enumerate(all_images):   
-        if not image.generated_alt_text:
-            print(f"Generating alt text for image {i+1} of {len(all_images)}...")
-            
-            img_filepath = image.image_filepath
-            base64_str = encode_image_to_base64(img_filepath)
-            data_uri = f"data:{get_mimetype(img_filepath)};base64,{base64_str}"
-            
-            new_alt_text = alt_text_generator.generate_alt_text(image, data_uri)
-            image.generated_alt_text = new_alt_text
-            write_backup_to_json_file(all_chapters, backup_filepath)
-        else:
-            print(f"Skipping image {i+1} of {len(all_images)} (alt text already generated)...")
+        # generate new alt text
+        for i, image in enumerate(all_images):   
+            if not image.generated_alt_text:
+                print(f"Generating alt text for image {i+1} of {len(all_images)}...")
+                
+                img_filepath = image.image_filepath
+                base64_str = encode_image_to_base64(img_filepath)
+                data_uri = f"data:{get_mimetype(img_filepath)};base64,{base64_str}"
+                
+                new_alt_text = alt_text_generator.generate_alt_text(image, data_uri)
+                image.generated_alt_text = new_alt_text
+                write_backup_to_json_file(all_chapters, backup_filepath)
+            else:
+                print(f"Skipping image {i+1} of {len(all_images)} (alt text already generated)...")
+    else:
+        # merge CSV data into all_chapters
+        print("Loading and merging alt text data from CSV...")
+        updated_img_src_and_alt_text = read_review_data_from_csv_file(csv_filepath)
+        merge_review_data_with_repo_data(updated_img_src_and_alt_text, all_chapters)
 
     # output review file
     write_review_data_to_csv_file(all_images, review_filepath)
