@@ -7,6 +7,9 @@ from process_repo_files import *
 
 
 def test_read_atlas_json(tmp_path):
+    """
+    Unit test for read_atlas_json
+    """
     atlas = tmp_path / "atlas.json"
     chapter = tmp_path / "chapter1.html"
     chapter.write_text("<html></html>")
@@ -16,6 +19,9 @@ def test_read_atlas_json(tmp_path):
     assert chapter in result
 
 def test_check_tilt_gem_installed(monkeypatch):
+    """
+    Unit test for check_tilt_gem_installed
+    """
     # Simulate tilt gem missing
     def fake_run(*a, **k):
         class Result:
@@ -26,6 +32,9 @@ def test_check_tilt_gem_installed(monkeypatch):
         check_tilt_gem_installed()
 
 def test_check_asciidoctor_installed(monkeypatch):
+    """
+    Unit test for check_asciidoctor_installed
+    """
     # Simulate asciidoctor present
     monkeypatch.setattr("subprocess.run", lambda *a, **k: type("R", (), {"stdout": "asciidoctor 2.0.0"})())
     assert check_asciidoctor_installed() is True
@@ -36,6 +45,9 @@ def test_check_asciidoctor_installed(monkeypatch):
         check_asciidoctor_installed()
 
 def test_convert_asciidoc_string_to_html(monkeypatch):
+    """
+    Unit test for convert_asciidoc_string_to_html
+    """
     # Simulate successful conversion
     monkeypatch.setattr("subprocess.run", lambda *a, **k: type("R", (), {"stdout": "<html>converted</html>"})())
     html = convert_asciidoc_string_to_html("= Title", "./")
@@ -48,18 +60,27 @@ def test_convert_asciidoc_string_to_html(monkeypatch):
         convert_asciidoc_string_to_html("= Title", "./")
 
 def test_is_local_relative_path():
+    """
+    Unit test for is_local_relative_path
+    """
     assert is_local_relative_path("images/foo.png")
     assert not is_local_relative_path("http://example.com/foo.png")
     assert not is_local_relative_path("/foo.png")
     assert not is_local_relative_path("data:image/png;base64,abc")
 
 def test_resolve_image_path(tmp_path):
+    """
+    Unit test for resolve_image_path
+    """    
     img = tmp_path / "foo.png"
     img.write_bytes(b"x")
     assert resolve_image_path(tmp_path, "foo.png") == img.resolve()
     assert resolve_image_path(tmp_path, "notfound.png") is None
 
 def test_encode_image_to_base64(tmp_path):
+    """
+    Unit test for encode_image_to_base64
+    """     
     img = tmp_path / "foo.png"
     img.write_bytes(b"abc")
     b64 = encode_image_to_base64(img)
@@ -67,6 +88,9 @@ def test_encode_image_to_base64(tmp_path):
     assert b64 == b64mod.b64encode(b"abc").decode()
 
 def test_get_mimetype(tmp_path):
+    """
+    Unit test for get_mimetype
+    """   
     img = tmp_path / "foo.png"
     img.write_bytes(b"abc")
     assert get_mimetype(img) == "image/png"
@@ -76,6 +100,9 @@ def test_get_mimetype(tmp_path):
         get_mimetype(unknown)
 
 def test_detect_format(tmp_path):
+    """
+    Unit test for detect_format
+    """       
     html = tmp_path / "foo.html"
     adoc = tmp_path / "foo.adoc"
     html.write_text("")
@@ -84,6 +111,9 @@ def test_detect_format(tmp_path):
     assert detect_format(adoc) == "asciidoc"
 
 def test_get_next_non_whitespace_sibling():
+    """
+    Unit test for get_next_non_whitespace_sibling
+    """   
     from bs4 import BeautifulSoup
     html = '<div class="content"></div>\n<div class="title">caption</div>'
     soup = BeautifulSoup(html, "html.parser")
@@ -92,6 +122,9 @@ def test_get_next_non_whitespace_sibling():
     assert sibling and sibling["class"] == ["title"]
 
 def test_collect_image_data_from_chapter_file_html(tmp_path):
+    """
+    Unit test for collect_image_data_from_chapter_file_html
+    """  
     from process_repo_files import collect_image_data_from_chapter_file
     html = '<html><body><img src="foo.jpg" alt=""><p>caption</p></body></html>'
     img = tmp_path / "foo.jpg"
@@ -109,6 +142,9 @@ def test_collect_image_data_from_chapter_file_html(tmp_path):
     assert images[0].image_src == "foo.jpg"
 
 def test_replace_alt_text_in_chapter_content():
+    """
+    Unit test for replace_alt_text_in_chapter_content
+    """      
     from chapters_and_images import Image
     images = [Image(
         chapter_filepath=Path("chapter1.html"),
@@ -125,4 +161,3 @@ def test_replace_alt_text_in_chapter_content():
     html = '<html><body><img src="images/dog.jpg" alt=""></body></html>'
     out = replace_alt_text_in_chapter_content(html, "html", images)
     assert 'alt="A dog running"' in out
-

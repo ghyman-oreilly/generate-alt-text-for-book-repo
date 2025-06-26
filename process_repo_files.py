@@ -106,7 +106,10 @@ def check_asciidoctor_installed(raise_on_error=True) -> bool:
         return False
 
 
-def convert_asciidoc_string_to_html(asciidoc_content: str, path_to_conversion_templates: Union[str, Path]) -> str:
+def convert_asciidoc_string_to_html(
+        asciidoc_content: str, 
+        path_to_conversion_templates: Union[str, Path]
+    ) -> str:
     """
     Convert an AsciiDoc string to HTML using the Asciidoctor CLI.
 
@@ -287,6 +290,9 @@ def collect_image_data_from_chapter_file(
 
 
 def get_next_non_whitespace_sibling(tag):
+    """
+    Return the next non-whitespace sibling element of input element.
+    """
     next_sibling = tag.next_sibling
     while next_sibling:
         if isinstance(next_sibling, NavigableString):
@@ -300,6 +306,9 @@ def get_next_non_whitespace_sibling(tag):
 
 
 def is_local_relative_path(src: str) -> bool:
+    """
+    Return True if parsed input string represents a local, relative path.
+    """
     parsed = urlparse(src)
     return (
         not parsed.scheme  # excludes http, https, data, file, etc.
@@ -309,6 +318,9 @@ def is_local_relative_path(src: str) -> bool:
 
 
 def resolve_image_path(project_dir: Path, src: str) -> Optional[Path]:
+    """
+    Build absolute filepath to image from src path, which may be relative.
+    """
     if is_local_relative_path(src):
         candidate_path = project_dir / src
         if candidate_path.exists():

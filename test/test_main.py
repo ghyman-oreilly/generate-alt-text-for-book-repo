@@ -13,6 +13,9 @@ from chapters_and_images import Chapter, Image
 
 
 def create_fake_project(tmp_path):
+    """
+    Create minimal session input data (HTML use case) for testing
+    """
     # Create chapter HTML and atlas.json
     chapter_path = tmp_path / "chapter1.html"
     chapter_content = '<html><body><img src="images/dog.jpg" alt=""></body></html>'
@@ -35,7 +38,7 @@ def create_fake_project(tmp_path):
 
 
 def test_main_basic_end_to_end(tmp_path, monkeypatch):
-    """Basic end-to-end test of script flow/logic"""
+    """Basic end-to-end test of script flow/logic (all dummy data)"""
     # Set up files in tmp_path
     atlas_path, filter_path, chapter_path = create_fake_project(tmp_path)
 
@@ -55,12 +58,12 @@ def test_main_basic_end_to_end(tmp_path, monkeypatch):
 
         # Patch __file__ to allow template path resolution
         monkeypatch.setattr("generate_alt_text.__file__", str(Path(__file__)))
-
-        # Patch AltTextGenerator so we don't hit a real API
+        
         class FakeGenerator:
             def generate_alt_text(self, image_obj, data_uri):
                 return "A realistic alt text"
 
+        # Patch AltTextGenerator so we don't hit a real API
         monkeypatch.setattr("main.AltTextGenerator", lambda: FakeGenerator())
 
         # Patch image encoding (base64 doesn't matter here)

@@ -9,6 +9,10 @@ from main import main
 
 
 def count_images_in_chapters(chapter_files, chapter_format):
+    """
+    Helper function to count images in chapter, to 
+    test expected vs. actual
+    """
     count = 0
     for chapter_file in chapter_files:
         text = chapter_file.read_text()
@@ -19,6 +23,10 @@ def count_images_in_chapters(chapter_files, chapter_format):
     return count
 
 def run_integration(tmp_path, testdata_dir, chapter_format, monkeypatch):
+    """
+    Basic end-to-end test of script's business logic
+    """
+    
     # Copy test data files to tmp_path
     for file in Path(testdata_dir).iterdir():
         target = tmp_path / file.name
@@ -31,10 +39,14 @@ def run_integration(tmp_path, testdata_dir, chapter_format, monkeypatch):
 
     atlas_path = tmp_path / "atlas.json"
 
-    # Patch AltTextGenerator to avoid real API calls
     class FakeGenerator:
+        """
+        Dummy AltTextGenerator class
+        """
         def generate_alt_text(self, image_obj, data_uri):
             return f"ALT for {image_obj.image_src}"
+        
+    # Patch AltTextGenerator to avoid real API calls
     monkeypatch.setattr("main.AltTextGenerator", lambda: FakeGenerator())
 
     # Patch input to auto-confirm
@@ -167,7 +179,7 @@ def test_filtered_integration(tmp_path, monkeypatch):
     )
 
 def test_do_not_replace_existing_alt_text(tmp_path, monkeypatch):
-    """Test that --do-not-replace-existing-alt-text flag works correctly."""
+    """Test do_not_replace_existing_alt_text use case."""
     # Create a simple HTML file with two images
     test_html = """
     <html>
@@ -193,10 +205,11 @@ def test_do_not_replace_existing_alt_text(tmp_path, monkeypatch):
     atlas_path = tmp_path / "atlas.json"
     atlas_path.write_text(json.dumps(atlas_json))
 
-    # Patch AltTextGenerator to return predictable alt text
     class FakeGenerator:
         def generate_alt_text(self, image_obj, data_uri):
             return f"ALT for {image_obj.image_src}"
+
+    # Patch AltTextGenerator to return predictable alt text
     monkeypatch.setattr("main.AltTextGenerator", lambda: FakeGenerator())
 
     # Patch input to auto-confirm
@@ -294,10 +307,11 @@ def test_load_from_json(tmp_path, monkeypatch):
     atlas_path = tmp_path / "atlas.json"
     atlas_path.write_text(json.dumps(atlas_json))
 
-    # Patch AltTextGenerator to return predictable alt text
     class FakeGenerator:
         def generate_alt_text(self, image_obj, data_uri):
             return f"ALT for {image_obj.image_src}"
+    
+    # Patch AltTextGenerator to return predictable alt text
     monkeypatch.setattr("main.AltTextGenerator", lambda: FakeGenerator())
 
     # Patch input to auto-confirm

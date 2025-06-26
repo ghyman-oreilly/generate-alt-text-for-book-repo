@@ -25,7 +25,3 @@ class Image(BaseModel):
 
 Images = List[Image]
 Chapters = List[Chapter]
-
-
-
-

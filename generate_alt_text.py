@@ -31,6 +31,9 @@ client = openai.OpenAI(api_key=api_key)
 
 
 class AltTextGenerator:
+    """
+    Generates alt text for images using a vision-capable language model (default: 'gpt-4o').
+    """
     def __init__(self, model="gpt-4o"):
         self.model = model
 

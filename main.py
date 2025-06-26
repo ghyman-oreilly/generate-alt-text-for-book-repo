@@ -24,16 +24,25 @@ from process_repo_files import (
 
 
 def write_backup_to_json_file(input_data: list[Chapter], output_filepath: Union[str, Path]):
+    """ 
+    Serialize Chapter and Image model data and save in JSON file.
+    """
     with open(str(output_filepath), 'w') as f:
         json.dump([i.model_dump(mode="json") for i in input_data], f)
 
 
 def read_backup_from_json_file(input_filepath: Union[str, Path]):
+    """ 
+    Read JSON file and and validate data as Chapter and Image model data.
+    """
     with open(str(input_filepath), 'r') as f:
         chapter_data = json.load(f)
         return [Chapter.model_validate(c) for c in chapter_data]
 
 def write_review_data_to_csv_file(input_data: list[Image], output_filepath: Union[str, Path]):
+    """
+    Write Image data (src path and AI-generate alt text) to CSV file.
+    """
     img_filepath_and_alt_texts = [
         (image.image_src, image.generated_alt_text) for image in input_data 
         if image.generated_alt_text
@@ -88,7 +97,7 @@ def merge_review_data_with_repo_data(
         all_chapters: list[Chapter]
     ):
     """
-    Merge updated alt text into Chapter data
+    Merge edited/updated alt text into Chapter data
 
     Args:
         updated_img_src_and_alt_text: list of tuples (img_src, alt_text)

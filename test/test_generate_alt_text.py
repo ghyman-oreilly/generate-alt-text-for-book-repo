@@ -5,6 +5,9 @@ import sys
 
 
 class DummyImage:
+    """
+    Dummy image with mandatory field values for testing.
+    """
     def __init__(self):
         self.preceding_para_text = "A dog is running."
         self.succeeding_para_text = "The dog stops."
@@ -70,4 +73,3 @@ def test_openai_key_missing(monkeypatch, tmp_path):
     
     with pytest.raises(OpenAIKeyMissingError):
         check_api_key(dotenv_path=empty_env)
-
