@@ -1,11 +1,13 @@
 import argparse
 import csv
+import html
 import json
 import os
 from pathlib import Path
+import regex
 import sys
 import time
-from typing import Optional, Union
+from typing import List, Tuple, Union
 
 from chapters_and_images import Chapter, Chapters, Image, Images
 from generate_alt_text import AllTextGenerator
@@ -40,19 +42,45 @@ def write_review_data_to_csv_file(input_data: list[Image], output_filepath: Unio
         writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL)
         writer.writerows(img_filepath_and_alt_texts)
 
-def read_review_data_from_csv_file(input_filepath: Union[str, Path]) -> list[tuple[str, str]]:
+def read_review_data_from_csv_file(input_filepath: Union[str, Path]) -> List[Tuple[str, str]]:
     """
-    Expected structure in CSV is:
-    | img src path | alt text    
+    Read a 2-column CSV with: image path, alt-text.
 
-    Output a list of tuples with same
+    Returns:
+        A list of (img_path, html_escaped_alt_text) tuples.
     """
-    img_src_and_alt_text: Optional[list[tuple[str, str]]] = []
-    with open(str(input_filepath), 'r', newline='', encoding='utf-8') as file:
-        reader = csv.reader(file)
-        data = list(reader)
-    for row in data:
-        img_src_and_alt_text.append((row[0], row[1]))
+    img_src_and_alt_text: List[Tuple[str, str]] = []
+    errors: List[str] = []
+
+    with open(str(input_filepath), 'r', encoding='utf-8', newline='') as file:
+        for lineno, line in enumerate(file, start=1):
+            raw_line = line.rstrip('\n')
+
+            try:
+                # help ensure internal quotes are escaped (not bulletproof)
+                quoted_field_pattern = r'(?<=^|,[ ]*)"(.*?)"(?=$|,[ ]*|\n|\r)' # quoted fields (not including the external quotes)
+                quoted_fields = regex.findall(quoted_field_pattern, raw_line, flags=regex.MULTILINE)
+                if quoted_fields:
+                    for field in quoted_fields:
+                        unescaped_quote_pattern = r'(?<!")"(?!")'
+                        unescaped_quotes = regex.findall(unescaped_quote_pattern, field)
+                        if unescaped_quotes:
+                            raise ValueError(f"Line {lineno} with quoted field has unescaped internal quotes:\n{raw_line}")
+
+                # Use csv.reader to split
+                row = next(csv.reader([raw_line], delimiter=',', quotechar='"'))
+                if len(row) != 2:
+                    raise ValueError(f"Line {lineno}: Expected 2 fields, got {len(row)}: {row}")
+
+                img_path = row[0].strip()
+                alt_text = html.escape(row[1].strip())  # escape for HTML
+                img_src_and_alt_text.append((img_path, alt_text))
+            except Exception as e:
+                errors.append(f"{str(e)}")
+        if errors:
+            all_errors = "\n\n".join(errors)
+            raise ValueError(f"The following errors were found while reading the CSV:\n\n{all_errors}")
+
     return img_src_and_alt_text
 
 def merge_review_data_with_repo_data(
