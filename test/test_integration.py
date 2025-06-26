@@ -1,3 +1,4 @@
+import csv
 import json
 import os
 from pathlib import Path
@@ -76,6 +77,9 @@ def run_integration(tmp_path, testdata_dir, chapter_format, monkeypatch):
     ("test/testdata/asciidoc_case", "adoc"),
 ])
 def test_full_integration(tmp_path, testdata_dir, chapter_format, monkeypatch):
+    """
+    Run basic E2E for Asciidoc and HTML use cases 
+    """
     run_integration(tmp_path, testdata_dir, chapter_format, monkeypatch)
 
 def run_integration_with_filter(tmp_path, testdata_dir, chapter_format, monkeypatch, image_filter_list):
@@ -327,3 +331,82 @@ def test_load_from_json(tmp_path, monkeypatch):
     # Assert: New backup file was created
     new_backup_files = list(tmp_path.glob("backup_*.json"))
     assert new_backup_files, "New backup file was not created"
+
+def test_csv_based_integration_update(tmp_path, monkeypatch):
+    """
+    End-to-end test for update_alt_text_from_csv use case
+    """
+    # Setup test HTML file
+    chapter_html = tmp_path / "chapter.html"
+    chapter_html.write_text("""
+    <html>
+    <body>
+    <img src="images/dog.png" alt="">
+    <img src="images/cat.png" alt="">
+    <img src="images/ignored.png" alt="">
+    </body>
+    </html>
+    """, encoding="utf-8")
+
+    # Setup images
+    images_dir = tmp_path / "images"
+    images_dir.mkdir()
+    (images_dir / "dog.png").touch()
+    (images_dir / "cat.png").touch()
+    (images_dir / "ignored.png").touch()
+
+    # Atlas.json pointing to our chapter
+    atlas_path = tmp_path / "atlas.json"
+    atlas_path.write_text(json.dumps({"files": [chapter_html.name]}))
+
+    # CSV with updated alt text for two images
+    csv_path = tmp_path / "alt_text_updates.csv"
+    with csv_path.open("w", newline='', encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["images/dog.png", "A happy dog."])
+        writer.writerow(["images/cat.png", "A lazy cat."])
+
+    # Patch sys.argv to pass update-alt-text-from-csv
+    monkeypatch.setattr("sys.argv", [
+        "script_name",
+        str(atlas_path),
+        "--update-alt-text-from-csv",
+        str(csv_path),
+    ])
+
+    # Patch input to auto-confirm prompts
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    # Change working directory to tmp_path
+    old_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        main()
+    finally:
+        os.chdir(old_cwd)
+
+    # Validate HTML was updated correctly
+    updated_content = chapter_html.read_text()
+    assert 'src="images/dog.png" alt="A happy dog."' in updated_content
+    assert 'src="images/cat.png" alt="A lazy cat."' in updated_content
+    assert 'src="images/ignored.png" alt=""' in updated_content or 'src="images/ignored.png" alt=""' in updated_content
+
+    # Check review CSV was written
+    review_csvs = list(tmp_path.glob("review_*.csv"))
+    assert review_csvs, "No review CSV was generated."
+
+    rows = [row for row in csv.reader(review_csvs[0].open())]
+    assert any("dog.png" in row[0] and "A happy dog." in row[1] for row in rows)
+    assert any("cat.png" in row[0] and "A lazy cat." in row[1] for row in rows)
+
+    # Check JSON backup file was written
+    backup_files = list(tmp_path.glob("backup_*.json"))
+    assert backup_files, "No backup JSON was written."
+
+    # check alt text of first image was replaced as expected
+    dog_match = re.search(r'<img\s+[^>]*src="images/dog.png"[^>]*alt="([^"]+)"', updated_content)
+    assert dog_match and dog_match.group(1) == "A happy dog."
+
+    # check image to be ignored was not changed
+    ignored_match = re.search(r'<img\s+[^>]*src="images/ignored.png"[^>]*alt="([^"]*?)"', updated_content)
+    assert ignored_match and ignored_match.group(1) == ""
