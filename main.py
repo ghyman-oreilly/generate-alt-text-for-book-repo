@@ -1,4 +1,5 @@
 import argparse
+import csv
 import json
 import os
 from pathlib import Path
@@ -6,7 +7,7 @@ import sys
 import time
 from typing import Union
 
-from chapters_and_images import Images, Chapter, Chapters
+from chapters_and_images import Chapter, Chapters, Image, Images
 from generate_alt_text import AllTextGenerator
 from process_repo_files import (
     read_atlas_json, 
@@ -30,6 +31,17 @@ def read_backup_from_json_file(input_filepath: Union[str, Path]):
         chapter_data = json.load(f)
         return [Chapter.model_validate(c) for c in chapter_data]
 
+def write_review_data_to_csv_file(input_data: list[Image], output_filepath: Union[str, Path]):
+    img_filepath_and_alt_texts = [
+        (image.image_src, image.generated_alt_text) for image in input_data 
+        if image.generated_alt_text
+    ]
+    with open(str(output_filepath), 'w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file, quoting=csv.QUOTE_MINIMAL)
+        writer.writerows(img_filepath_and_alt_texts)
+
+def read_review_data_from_csv_file():
+    pass
 
 def main():
     parser = argparse.ArgumentParser(description="Script for generating alt text for images in an ORM book repo.")
@@ -49,6 +61,7 @@ def main():
     project_dir = atlas_filepath.parent
     cwd = os.getcwd()
     backup_filepath = Path(cwd) / f"backup_{int(time.time())}.json"
+    review_filepath = Path(cwd) / f"review_{int(time.time())}.csv"
     
     chapter_filepaths = read_atlas_json(atlas_filepath)
 
@@ -145,6 +158,13 @@ def main():
             write_backup_to_json_file(all_chapters, backup_filepath)
         else:
             print(f"Skipping image {i+1} of {len(all_images)} (alt text already generated)...")
+
+    # output review file
+    write_review_data_to_csv_file(all_images, review_filepath)
+
+    if input(f"Alt text printed to file {review_filepath}. Would you like to proceed to making replacements? (y/n) ").strip().lower() not in ['y', 'yes']:
+        print("Exiting.")
+        sys.exit(0)
 
     # replace alt text in chapters
     for chapter in all_chapters:
