@@ -56,12 +56,12 @@ def test_main_basic_end_to_end(tmp_path, monkeypatch):
         # Patch __file__ to allow template path resolution
         monkeypatch.setattr("generate_alt_text.__file__", str(Path(__file__)))
 
-        # Patch AllTextGenerator so we don't hit a real API
+        # Patch AltTextGenerator so we don't hit a real API
         class FakeGenerator:
             def generate_alt_text(self, image_obj, data_uri):
                 return "A realistic alt text"
 
-        monkeypatch.setattr("main.AllTextGenerator", lambda: FakeGenerator())
+        monkeypatch.setattr("main.AltTextGenerator", lambda: FakeGenerator())
 
         # Patch image encoding (base64 doesn't matter here)
         monkeypatch.setattr("process_repo_files.encode_image_to_base64", lambda path: "BASE64")

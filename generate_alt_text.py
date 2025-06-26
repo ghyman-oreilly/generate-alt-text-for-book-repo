@@ -30,7 +30,7 @@ api_key = check_api_key()
 client = openai.OpenAI(api_key=api_key)
 
 
-class AllTextGenerator:
+class AltTextGenerator:
     def __init__(self, model="gpt-4o"):
         self.model = model
 

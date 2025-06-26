@@ -31,11 +31,11 @@ def run_integration(tmp_path, testdata_dir, chapter_format, monkeypatch):
 
     atlas_path = tmp_path / "atlas.json"
 
-    # Patch AllTextGenerator to avoid real API calls
+    # Patch AltTextGenerator to avoid real API calls
     class FakeGenerator:
         def generate_alt_text(self, image_obj, data_uri):
             return f"ALT for {image_obj.image_src}"
-    monkeypatch.setattr("main.AllTextGenerator", lambda: FakeGenerator())
+    monkeypatch.setattr("main.AltTextGenerator", lambda: FakeGenerator())
 
     # Patch input to auto-confirm
     monkeypatch.setattr("builtins.input", lambda _: "y")
@@ -100,11 +100,11 @@ def run_integration_with_filter(tmp_path, testdata_dir, chapter_format, monkeypa
 
     atlas_path = tmp_path / "atlas.json"
 
-    # Patch AllTextGenerator to avoid real API calls
+    # Patch AltTextGenerator to avoid real API calls
     class FakeGenerator:
         def generate_alt_text(self, image_obj, data_uri):
             return f"ALT for {image_obj.image_src}"
-    monkeypatch.setattr("main.AllTextGenerator", lambda: FakeGenerator())
+    monkeypatch.setattr("main.AltTextGenerator", lambda: FakeGenerator())
 
     # Patch input to auto-confirm
     monkeypatch.setattr("builtins.input", lambda _: "y")
@@ -193,11 +193,11 @@ def test_do_not_replace_existing_alt_text(tmp_path, monkeypatch):
     atlas_path = tmp_path / "atlas.json"
     atlas_path.write_text(json.dumps(atlas_json))
 
-    # Patch AllTextGenerator to return predictable alt text
+    # Patch AltTextGenerator to return predictable alt text
     class FakeGenerator:
         def generate_alt_text(self, image_obj, data_uri):
             return f"ALT for {image_obj.image_src}"
-    monkeypatch.setattr("main.AllTextGenerator", lambda: FakeGenerator())
+    monkeypatch.setattr("main.AltTextGenerator", lambda: FakeGenerator())
 
     # Patch input to auto-confirm
     monkeypatch.setattr("builtins.input", lambda _: "y")
@@ -294,11 +294,11 @@ def test_load_from_json(tmp_path, monkeypatch):
     atlas_path = tmp_path / "atlas.json"
     atlas_path.write_text(json.dumps(atlas_json))
 
-    # Patch AllTextGenerator to return predictable alt text
+    # Patch AltTextGenerator to return predictable alt text
     class FakeGenerator:
         def generate_alt_text(self, image_obj, data_uri):
             return f"ALT for {image_obj.image_src}"
-    monkeypatch.setattr("main.AllTextGenerator", lambda: FakeGenerator())
+    monkeypatch.setattr("main.AltTextGenerator", lambda: FakeGenerator())
 
     # Patch input to auto-confirm
     monkeypatch.setattr("builtins.input", lambda _: "y")

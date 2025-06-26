@@ -22,7 +22,7 @@ def test_create_prompt():
     """
     import generate_alt_text
     image = DummyImage()
-    generator = generate_alt_text.AllTextGenerator()
+    generator = generate_alt_text.AltTextGenerator()
     data_uri = "data:image/jpeg;base64,FAKEBASE64DATA"
     prompt = generator.create_prompt(image, data_uri)
     assert isinstance(prompt, list)
@@ -43,7 +43,7 @@ def test_generate_alt_text(monkeypatch):
     """
     import generate_alt_text
     image = DummyImage()
-    generator = generate_alt_text.AllTextGenerator()
+    generator = generate_alt_text.AltTextGenerator()
     data_uri = "data:image/jpeg;base64,FAKEBASE64DATA"
     class FakeResponse:
         output_text = "This is an image of a dog."

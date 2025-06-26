@@ -10,7 +10,7 @@ import time
 from typing import List, Tuple, Union
 
 from chapters_and_images import Chapter, Chapters, Image, Images
-from generate_alt_text import AllTextGenerator
+from generate_alt_text import AltTextGenerator
 from process_repo_files import (
     read_atlas_json, 
     check_asciidoctor_installed, 
@@ -213,7 +213,7 @@ def main():
     if not csv_filepath:
         # this is executed in the case of load_data_from_json
         # to ensure we finish accumulating alt text, if/as needed
-        alt_text_generator = AllTextGenerator()
+        alt_text_generator = AltTextGenerator()
         
         print(f"Sending data to AI service. Data will be iteratively backed up at {backup_filepath}")
 
